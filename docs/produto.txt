@@ -1,0 +1,561 @@
+﻿Framework de Produto e Arquitetura
+Agente Financeiro Agricola para Produtores Rurais
+Documento base para discussão com sócio, definição de MVP, regras de negócio, comportamento do agente e desenvolvimento técnico
+
+
+Objetivo deste document
+
+
+Este material transforma a ideia do agente em um escopo estruturado. Ele deve ser usado para alinhar produto, regra de negócio, comportamento conversacional, banco de dados, integrações e prioridades de desenvolvimento antes de iniciar a construção.
+	1. Visão geral do produto
+O agente financeiro agrícola tem como objetivo ajudar produtores rurais a planejar e controlar custos, ganhos, compras parceladas, cartões e metas de safra ao longo do ano. Ele deve funcionar como um assistente financeiro operacional, capaz de registrar informações via conversa, alertar desvios do planejamento e gerar relatórios recorrentes.
+Proposta central
+Ajudar o produtor a responder, todos os dias: quanto eu planejei gastar, quanto já gastei, quanto ainda falta, onde estou estourando e quanto entrou ou saiu da fazenda.
+	Problemas que o agente resolve
+* Produtor anotar gastos de forma espalhada em WhatsApp, papel, planilha ou memória.
+* Planejamento de safra existe, mas não é acompanhado no dia a dia.
+* Gastos estouram sem aviso antecipado.
+* Compras parceladas e cartões se misturam com gastos gerais.
+* Falta visão diária simples para tomada de decisão.
+* Sócios ou gestores não conseguem acompanhar entradas, saídas e categorias em tempo real.
+Publico-alvo inicial
+Persona
+	Dor principal
+	Como o agente ajuda
+	Produtor rural
+	Quer saber se esta dentro do planejamento da safra.
+	Registra gastos e ganhos por WhatsApp e recebe alertas e relatorios.
+	Administrador da fazenda
+	Precisa organizar custos por categoria, cultura, safra e cartao.
+	Usa painel e relatorios para acompanhar o financeiro.
+	Socio/contador interno
+	Precisa conferir entradas, saidas e historico.
+	Consulta relatorios, filtros e indicadores no painel web.
+	2. MVP recomendado
+O MVP deve validar o valor principal: registrar movimentacoes financeiras por conversa, comparar gastos reais contra planejamento e gerar alertas e relatorios automaticos. Evite iniciar com funcionalidades muito complexas de contabilidade ou fiscal.
+Modulo
+	Entra no MVP?
+	Observacao
+	Cadastro rapido do usuario
+	Sim
+	Primeira interacao do agente deve criar usuario gratuito e identificar telefone.
+	Planejamento de safra/categoria
+	Sim
+	Produtor define metas de gasto por cultura, safra e categoria.
+	Registro de gastos e ganhos
+	Sim
+	Via WhatsApp e painel, com edicao e exclusao.
+	Alertas de limite planejado
+	Sim
+	Aviso ao atingir percentuais e ao estourar o planejado.
+	Relatorio diario 7h
+	Sim
+	Resumo automatico por usuario no horario do Brasil.
+	Cartoes e parcelas
+	Sim, versao simples
+	Cadastrar cartoes, compras parceladas e relatorio por cartao.
+	Assinatura e planos
+	Sim, versao basica
+	Explicar planos e gerar link de pagamento.
+	Dashboard interno
+	Sim, versao basica
+	Usuarios, pagantes, planos, receita e novos cadastros.
+	Cadastro de cartao recorrente
+	Fase 2
+	Pode iniciar com link de pagamento antes de salvar cartao.
+	Integracao bancaria/open finance
+	Fase 2/3
+	Nao colocar no MVP para evitar complexidade.
+	Notas fiscais e contabilidade completa
+	Fase 3
+	Pode virar modulo futuro.
+	3. Primeira interação e onboarding
+A primeira interação é crítica porque define identidade do usuário, permissão, plano gratuito e limites de uso. O identificador principal deve ser o telefone do WhatsApp, combinado com cadastro interno.
+Fluxo de cadastro rapido
+1. Usuario envia primeira mensagem.
+2. Agente identifica que o telefone ainda nao existe no banco.
+3. Agente se apresenta e explica brevemente o que faz.
+4. Agente coleta nome, nome da fazenda, cidade/UF e principal cultura ou atividade.
+5. Sistema cria usuario gratuito vinculado ao telefone.
+6. Agente informa limite do plano gratuito e proximo passo.
+7. Agente oferece criar o primeiro planejamento ou registrar uma movimentacao.
+Perguntas mínimas de cadastro
+[ ] Qual seu nome?
+[ ] Qual o nome da fazenda ou propriedade?
+[ ] Em qual cidade/UF fica?
+[ ] Qual sua principal cultura ou atividade? Exemplo: soja, milho, cafe, pecuaria?
+[ ] Voce quer comecar criando um planejamento de safra ou registrando um gasto?
+Mensagem sugerida de primeira interacao
+Exemplo
+Ola! Eu sou seu assistente financeiro agrícola. Vou te ajudar a controlar gastos, ganhos, planejamento de safra, cartoes e alertas de limite. Antes de comecar, vou fazer um cadastro rapido. Leva menos de 1 minuto.
+	4. Planejamento financeiro agricola
+O planejamento e o nucleo do produto. Ele representa quanto o produtor pretende gastar em determinado periodo, cultura, safra e categoria. Todo gasto registrado deve poder ser comparado com esse planejamento.
+Estrutura recomendada do planejamento
+Campo
+	Descricao
+	Exemplo
+	Nome do planejamento
+	Nome amigavel para consulta.
+	Safra Soja 2026
+	Cultura/atividade
+	Cultura ou atividade principal.
+	Soja
+	Periodo
+	Inicio e fim do planejamento.
+	01/09/2026 a 31/03/2027
+	Categoria
+	Tipo de gasto planejado.
+	Sementes, fertilizantes, defensivos
+	Valor planejado
+	Limite ou meta de gasto.
+	R$ 50.000,00
+	Status
+	Ativo, encerrado ou pausado.
+	Ativo
+	Responsavel
+	Usuario ou fazenda relacionada.
+	Fazenda Santa Maria
+	Categorias agricolas iniciais
+* Sementes
+* Fertilizantes/adubos
+* Defensivos 
+* Combustivel
+* Maquinario
+* Manutencao
+* Mao de obra
+* Frete/logistica
+* Arrendamento
+* Irrigacao
+* Energia
+* Seguro
+* Serviços terceirizados
+* Alimentação
+* Outros
+Regras de alerta
+Situacao
+	Comportamento do agente
+	Atingiu 50% do planejado
+	Aviso informativo: já foi consumida metade do orçamento previsto
+	Atingiu 80% do planejado
+	Alerta de atenção: falta pouco para bater o limite.
+	Atingiu 100%
+	Alerta forte: Orçamento totalmente utilizado. .
+	Passou de 100%
+	Alerta de estouro: informar valor excedente e percentual acima do planejado.
+	Gasto sem planejamento vinculado
+	Registrar como fora do planejado e sugerir criar categoria/planejamento.
+	5. Registro de custos e ganhos
+O agente deve permitir registrar saidas e entradas em linguagem natural. A IA deve entender a frase, extrair campos, pedir dados faltantes e salvar a movimentacao com seguranca.
+Exemplos de mensagens que devem funcionar
+* Gastei 500 reais para manutenção da colheitadeira.
+* Paguei 30 mil em sementes de soja hoje.
+* Recebi 12 mil da venda de milho.
+* Comprei peças na concessionária X em 3x de 2.000 no cartão Sicredi.
+* Apaga o gasto de manutenção que lancei hoje.
+* Edita o gasto de semente de soja para 32 mil.
+Campos da movimentação
+Campo
+	Obrigatorio?
+	Observacao
+	Tipo
+	Sim
+	Entrada ou saida.
+	Valor
+	Sim
+	Sempre salvar em centavos no banco.
+	Descricao
+	Sim
+	Texto amigavel do lancamento.
+	Categoria
+	Sim
+	Inferida pelo agente ou escolhida pelo usuario.
+	Data
+	Sim
+	Se nao informar, usar data atual do Brasil.
+	Planejamento vinculado
+	Nao
+	Quando aplicavel, vincular a safra/categoria.
+	Forma de pagamento
+	Nao
+	Pix, dinheiro, boleto, cartao, transferencia.
+	Cartao
+	Nao
+	Obrigatorio se forma de pagamento for cartao.
+	Parcelas
+	Nao
+	Obrigatorio se compra parcelada.
+	Anexo
+	Nao
+	Comprovante, imagem ou nota.
+	Editar e deletar movimentacoes
+Edicao e exclusao precisam de confirmacao para evitar perda de dados. O agente nao deve apagar ou alterar algo ambiguo sem antes listar a movimentacao encontrada e pedir confirmacao.
+Comando do usuario
+	Resposta esperada
+	Apaga o gasto de 500 da colheitadeira
+	Encontrei este lancamento: Manutencao colheitadeira - R$ 500,00 - hoje. Confirma excluir?
+	Edita o gasto da semente para 30 mil
+	Encontrei o lancamento X. Vou alterar o valor de R$ Y para R$ 30.000,00. Confirma?
+	Apaga o gasto de ontem
+	Se houver mais de um, listar opcoes numeradas e pedir escolha.
+	6. Cartões de crédito e compras parceladas
+O controle de cartoes deve ser simples no MVP, mas suficiente para relatorios individuais por cartao. Cada compra parcelada deve gerar parcelas futuras vinculadas a uma compra principal.
+Cadastro de cartao
+[ ] Nome do cartao: exemplo Sicredi, Banco do Brasil, Sicoob.
+[ ] Dia de fechamento da fatura.
+[ ] Dia de vencimento.
+[ ] Ultimos 4 digitos, opcional.
+[ ] Responsavel ou fazenda vinculada.
+Compra parcelada
+Campo
+	Descricao
+	Valor total
+	Valor total da compra.
+	Quantidade de parcelas
+	Numero de parcelas.
+	Valor da parcela
+	Calculado automaticamente ou informado.
+	Primeira competencia
+	Mes da primeira parcela.
+	Cartao
+	Cartao vinculado.
+	Categoria
+	Categoria financeira/agricola.
+	Planejamento vinculado
+	Se aplicavel, impacta planejamento no momento definido pela regra do produto.
+	Decisão importante sobre parcelas
+Regra a definir
+Para planejamento agrícola, normalmente faz sentido impactar o planejamento pelo valor total da compra no momento da compra, mesmo que o pagamento seja parcelado. Para o fluxo de caixa mensal, faz sentido impactar mes a mes pelas parcelas. O sistema deve separar visao de competencia agricola e visao de caixa.
+
+
+	Compras de safra. 
+Modelo de mensagem:
+Comprei sementes de soja na cocamar para 30/03/2027
+Comprei verdict (defensivo) na cvale pra 30/04 (2027) 
+Esses valores são correlacionados a cultura. Mas o volume financeiro e o prazo, é relacionado ao contas a pagar. 
+
+
+7. Relatorio diario automatico as 7h
+Todos os dias, as 7:00 da manha no horario do Brasil, o agente deve enviar um resumo financeiro para cada usuario elegivel conforme plano e configuracao.
+Conteúdo mínimo do relatório
+* Resumo de entradas e saídas do mes.
+* Planejamentos ativos com valor planejado, gasto atual, saldo restante e percentual consumido.
+* Categorias em alerta.
+* Gastos fora do planejado.
+* Cartoes com fatura atual e proximos vencimentos.
+* Principais lancamentos recentes.
+* Sugestao simples de acao, quando houver estouro ou risco.
+Exemplo de relatorio diario
+Mensagem exemplo
+Bom dia! Resumo financeiro de hoje:
+Safra Soja 2026: sementes planejado R$ 50.000,00, gasto R$ 30.000,00, faltam R$ 20.000,00. Consumo: 60%.
+Fertilizantes: planejado R$ 80.000,00, gasto R$ 66.000,00. Atencao: 82,5% consumido.
+Fora do planejado: R$ 500,00 em manutencao da colheitadeira.
+Cartao Sicredi: fatura parcial R$ 4.200,00, vencimento dia 10.
+	8. Planos, limites e monetizacao
+Mesmo que o produto comece como validacao, a arquitetura deve nascer preparada para planos, limites e pagamento. O agente precisa saber se o usuario e gratuito, pagante, inadimplente ou em teste.
+Sugestao inicial de planos
+Plano
+	Perfil
+	Limites sugeridos
+	Gratis
+	Teste e validacao
+	Limite diario de mensagens, poucos planejamentos ativos, relatorio simples.
+	Produtor Individual
+	Uma fazenda/produtor
+	Mais mensagens, planejamentos ilimitados dentro de uma fazenda, cartoes e relatorio diario.
+	Fazenda Pro
+	Gestao mais completa
+	Multiplos usuarios, mais fazendas, relatorios avancados e anexos.
+	Equipe/Consultoria
+	Consultores ou escritorios
+	Multiplos clientes/fazendas, dashboard agregado e permissoes.
+	Controle de uso por telefone
+O telefone do WhatsApp deve ser o identificador operacional inicial. Internamente, o telefone deve estar vinculado a um usuario, plano, fazenda e assinatura. Se o usuario trocar de telefone ou tiver mais de um responsavel, o sistema precisa permitir vinculos adicionais.
+Regras para plano gratis
+* Limitar quantidade de mensagens por dia.
+* Limitar numero de planejamentos ativos.
+* Limitar relatorio diario a versao resumida.
+* Permitir registrar movimentacoes basicas para gerar valor.
+* Quando atingir limite, explicar o plano pago sem ser agressivo.
+Pagamento
+Funcionalidade
+	MVP
+	Observacao
+	Explicar planos
+	Sim
+	Agente responde com resumo curto e valores.
+	Gerar link de pagamento
+	Sim
+	Integracao com API de pagamento.
+	Confirmar assinatura paga
+	Sim
+	Via webhook da plataforma de pagamento.
+	Cadastrar cartao pelo agente
+	Nao recomendado no MVP
+	Melhor usar checkout seguro da plataforma.
+	Atualizar plano automaticamente
+	Sim
+	Webhook muda status no banco.
+	9. Comportamento do agente
+O agente precisa ser humano o suficiente para ser facil de usar, mas objetivo o bastante para nao gerar confusao financeira. Ele deve confirmar acoes sensiveis e nunca inventar dados.
+Aspecto
+	Regra de comportamento
+	Tom
+	Simples, rural, direto e confiavel. Evitar linguagem excessivamente tecnica.
+	Humanizacao
+	Media. Pode ser cordial, mas deve priorizar clareza financeira.
+	Emojis
+	Poucos e funcionais. Usar em alertas e confirmacoes, sem exagero.
+	Confirmacao
+	Obrigatoria para exclusao, edicao ambigua, pagamento e alteracao de plano.
+	Ambiguidade
+	Perguntar o minimo necessario antes de salvar.
+	Dados financeiros
+	Sempre repetir valor, categoria e data antes ou depois de registrar.
+	Alertas
+	Ser claro e objetivo, sem assustar desnecessariamente.
+	Erros
+	Explicar o que faltou e pedir apenas o proximo dado necessario.
+	Exemplos de resposta
+Cenario
+	Resposta sugerida
+	Gasto dentro do planejado
+	Gasto registrado: R$ 30.000,00 em sementes de soja. Voce planejou R$ 50.000,00 e ja usou R$ 30.000,00. Ainda restam R$ 20.000,00.
+	Gasto perto do limite
+	Atencao: com esse gasto, voce chegou a 82% do planejado para fertilizantes. Ainda restam R$ 14.000,00.
+	Gasto estourado
+	Alerta: esse lancamento passou o planejado em R$ 3.500,00. Planejado: R$ 50.000,00. Gasto atual: R$ 53.500,00.
+	Falta dado
+	Consigo registrar. Esse valor foi para qual categoria: sementes, fertilizantes, manutencao ou outra?
+	Plano gratis atingiu limite
+	Voce atingiu o limite diario do plano gratis. Posso te mostrar os planos pagos para continuar usando hoje.
+	10. Permissoes, seguranca e confiabilidade
+Como o agente lida com informacoes financeiras, o produto deve nascer com permissoes e auditoria. Mesmo no MVP, edicoes e exclusoes devem deixar rastros.
+Perfis de acesso
+Perfil
+	Pode fazer
+	Dono da conta
+	Gerenciar assinatura, usuarios, fazendas, planejamentos, movimentacoes e relatorios.
+	Administrador da fazenda
+	Criar e editar planejamentos e movimentacoes conforme permissao.
+	Operador
+	Registrar gastos e ganhos, mas nao excluir sem permissao.
+	Leitor
+	Ver relatorios, sem alterar dados.
+	Admin interno
+	Ver usuarios, planos, pagamentos e metricas operacionais.
+	Auditoria obrigatoria
+* Quem criou cada lancamento.
+* Quem editou cada lancamento.
+* Quem excluiu cada lancamento.
+* Data e hora da alteracao.
+* Valor anterior e valor novo.
+* Origem: WhatsApp, painel web ou integracao.
+11. Painel web do usuario e painel interno
+O produto tera dois tipos de painel: um painel para usuarios/produtores acompanharem a propria fazenda e um painel interno para a equipe gerenciar usuarios, planos e receita.
+Painel do produtor
+* Dashboard financeiro geral.
+* Planejamentos ativos.
+* Entradas e saidas.
+* Gastos por categoria.
+* Cartoes e faturas.
+* Compras parceladas.
+* Relatorios por periodo.
+* Configuracoes da fazenda e usuarios.
+Painel interno da empresa
+Indicador
+	Descricao
+	Usuarios totais
+	Total de usuarios cadastrados.
+	Novos usuarios
+	Usuarios novos por dia/semana/mes.
+	Pagantes
+	Usuarios com assinatura ativa.
+	Planos
+	Distribuicao por plano.
+	Receita mensal
+	MRR ou receita recebida no mes.
+	Cancelamentos
+	Churn e assinaturas canceladas.
+	Uso do agente
+	Mensagens por usuario, chamadas de IA e limites.
+	Inadimplentes
+	Usuarios com pagamento atrasado.
+	Conversao
+	Gratis para pago.
+	12. Modelo de dados inicial
+Abaixo esta uma proposta de entidades para orientar banco de dados, APIs e tools do agente. Os nomes podem ser adaptados ao padrao tecnico do projeto.
+Entidade
+	Responsabilidade
+	users
+	Usuario principal do sistema, vinculado ao telefone e login.
+	farms
+	Fazendas ou propriedades do usuario.
+	user_farms
+	Relaciona usuarios e fazendas com permissoes.
+	subscriptions
+	Plano, status, periodo, gateway e limites.
+	plans
+	Cadastro dos planos e limites comerciais.
+	usage_limits
+	Controle de uso diario/mensal por usuario.
+	crop_plans
+	Planejamentos por safra/cultura.
+	planned_budget_items
+	Categorias e valores planejados dentro do planejamento.
+	transactions
+	Entradas e saidas financeiras.
+	categories
+	Categorias de gastos/ganhos.
+	cards
+	Cartoes cadastrados.
+	installment_purchases
+	Compra principal parcelada.
+	installments
+	Parcelas futuras vinculadas.
+	alerts
+	Alertas gerados por consumo de planejamento.
+	daily_reports
+	Historico dos relatorios enviados.
+	audit_logs
+	Rastro de criacao, edicao e exclusao.
+	payment_events
+	Webhooks e eventos do gateway de pagamento.
+	13. Tools do agente
+As tools sao as acoes reais que o agente pode executar. A IA deve decidir quando chamar uma tool, mas a regra de negocio deve estar no backend/n8n, nao apenas no prompt.
+Tool
+	Quando usar
+	create_user
+	Primeiro cadastro do usuario pelo telefone.
+	get_user_context
+	Buscar usuario, plano, fazendas, limites e permissoes.
+	create_crop_plan
+	Criar planejamento de safra/cultura.
+	add_budget_item
+	Adicionar categoria e valor planejado.
+	create_transaction
+	Registrar gasto ou ganho.
+	update_transaction
+	Editar lancamento com confirmacao.
+	delete_transaction
+	Excluir lancamento com confirmacao.
+	list_transactions
+	Buscar lancamentos por periodo/filtro.
+	check_budget_status
+	Comparar realizado contra planejado.
+	create_card
+	Cadastrar cartao.
+	create_installment_purchase
+	Registrar compra parcelada.
+	get_card_report
+	Relatorio individual por cartao.
+	generate_daily_report
+	Gerar relatorio das 7h.
+	get_plans
+	Listar planos comerciais.
+	create_payment_link
+	Gerar link de pagamento.
+	update_subscription_from_webhook
+	Atualizar assinatura apos pagamento.
+	14. Fluxos principais
+Fluxo A - Registrar gasto
+8. Receber mensagem.
+9. Identificar usuario pelo telefone.
+10. Verificar plano e limite de uso.
+11. Classificar intencao como registrar gasto.
+12. Extrair valor, categoria, data, descricao e forma de pagamento.
+13. Se faltar dado obrigatorio, perguntar apenas o dado faltante.
+14. Salvar transacao.
+15. Verificar planejamento vinculado.
+16. Gerar alerta se necessario.
+17. Responder com confirmacao e situacao do planejamento.
+Fluxo B - Criar planejamento
+18. Usuario pede para criar planejamento.
+19. Agente coleta cultura/atividade e periodo.
+20. Agente pergunta categorias e valores planejados.
+21. Sistema salva planejamento ativo.
+22. Agente resume o planejamento criado.
+23. Agente informa que novos gastos serao comparados com esse planejamento.
+Fluxo C - Relatorio diario
+24. Rotina agenda usuarios ativos para 7h no horario do Brasil.
+25. Buscar dados do periodo atual.
+26. Calcular planejado vs realizado.
+27. Calcular cartoes e parcelas.
+28. Identificar alertas.
+29. Gerar mensagem curta.
+30. Enviar WhatsApp.
+31. Salvar historico de envio.
+Fluxo D - Upgrade de plano
+32. Usuario pergunta sobre planos ou atinge limite.
+33. Agente explica opcoes de forma curta.
+34. Usuario escolhe plano.
+35. Sistema gera link de pagamento.
+36. Usuario paga no checkout.
+37. Gateway envia webhook.
+38. Sistema atualiza assinatura.
+39. Agente confirma liberacao do plano.
+15. Perguntas que precisam ser respondidas antes do desenvolvimento
+Use esta lista como checklist com seu socio. As respostas evitam retrabalho e decisoes improvisadas durante a construcao.
+Produto e regra de negocio
+[ ] O planejamento sera por safra, por ano, por cultura ou os tres? Por safra (o ano tem duas safras, e a cultura é relacionada a safra. Ex. Soja [safra de verão do ano agrícola corrente])
+[ ] Um usuario pode ter mais de uma fazenda? Sim
+[ ] Uma fazenda pode ter varios usuarios? Penso que numa segunda fase. 
+[ ] Gastos parcelados impactam o planejamento pelo valor total ou pelas parcelas? Pelo valor total. As parcelas são relacionadas ao fluxo do caixa. 
+[ ] Gastos fora do planejado devem criar automaticamente uma categoria? 
+[ ] O relatorio diario sera enviado para todos ou apenas para pagantes? Somente pagantes
+[ ] Qual limite diario do plano gratis? Registro de 5 custos diarios. 
+[ ] Quais acoes ficam bloqueadas no plano gratis? Planejamento
+[ ] O usuario pode excluir lancamentos sozinho? Eu acredito que sim. 
+[ ] Quem pode ver dados financeiros de uma fazenda compartilhada? Deve ter permissão
+Tecnico
+[ ] Qual sera o identificador principal: telefone, email ou ambos? Ambos. 
+[ ] O WhatsApp sera via Uazapi, Evolution, Meta API oficial ou outro? ??
+[ ] O processamento sera em n8n, backend proprio ou hibrido? ??
+[ ] Onde ficara a regra de negocio: backend, banco ou n8n? ??
+[ ] Qual gateway de pagamento sera usado? ??
+[ ] Como salvar webhooks de pagamento para auditoria? ??
+[ ] Como controlar timezone Brasil nos relatorios? ??
+[ ] Como lidar com mensagens duplicadas do WhatsApp? ?
+[ ] Como evitar que uma falha da IA crie lancamento errado? ?
+[ ] Como fazer backup do banco e exportacao de dados do usuario? ?
+16. Roadmap sugerido
+Fase
+	Objetivo
+	Entregas
+	Fase 1 - Fundacao
+	Criar base do produto.
+	Usuarios, fazendas, planos, limites, categorias e painel interno basico.
+	Fase 2 - Financeiro basico
+	Registrar entradas e saidas.
+	Criar, listar, editar e excluir movimentacoes com auditoria.
+	Fase 3 - Planejamento agricola
+	Comparar gasto real contra planejado.
+	Safras, categorias planejadas, alertas de 50/80/100/estouro.
+	Fase 4 - Cartoes e parcelas
+	Controlar compras parceladas.
+	Cartoes, faturas, parcelas e relatorio por cartao.
+	Fase 5 - Relatorio automatico
+	Enviar resumo diario.
+	Rotina das 7h, template do relatorio e historico de envio.
+	Fase 6 - Pagamentos
+	Monetizar e controlar acesso.
+	Checkout, webhook, upgrade/downgrade, status de assinatura.
+	Fase 7 - Refinamento
+	Melhorar experiencia e escala.
+	Painel do produtor, filtros avancados, anexos e indicadores.
+	17. Definicao de pronto do MVP
+O MVP pode ser considerado pronto quando um produtor conseguir se cadastrar pelo WhatsApp, criar um planejamento, registrar gastos e ganhos, receber alertas, consultar relatorio, controlar pelo menos um cartao e visualizar informacoes basicas no painel.
+[ ] Cadastro via WhatsApp funcionando.
+[ ] Usuario gratuito com limite diario funcionando.
+[ ] Criacao de planejamento por conversa.
+[ ] Registro de entrada e saida por conversa.
+[ ] Edicao e exclusao com confirmacao.
+[ ] Alertas de consumo do planejamento.
+[ ] Relatorio diario as 7h.
+[ ] Cartoes e compras parceladas simples.
+[ ] Dashboard interno com usuarios, planos e receita.
+[ ] Link de pagamento e webhook atualizando assinatura.
+
+
+Observacao final: este documento deve evoluir junto com o produto. A cada decisao tomada com o socio, atualize as perguntas em aberto e transforme as respostas em regras de negocio, campos de banco e comportamento do agente.
+Framework Agente Financeiro Agricola - Documento de Produto e Arquitetura
