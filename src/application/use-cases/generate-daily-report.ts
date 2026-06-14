@@ -15,8 +15,8 @@ export class GenerateDailyReportUseCase {
     for (const user of users) {
       const content = [
         "Bom dia! Resumo financeiro de hoje:",
-        "Ainda estou na versao inicial do relatorio automatico.",
-        "Em breve vou incluir planejamentos ativos, cartoes, parcelas e alertas."
+        "Ainda estou na versão inicial do relatório automático.",
+        "Em breve vou incluir planejamentos ativos, cartões, parcelas e alertas."
       ].join("\n");
 
       await this.whatsApp.sendText({ phone: user.phone, text: content });
@@ -26,4 +26,3 @@ export class GenerateDailyReportUseCase {
     return { sent: users.length };
   }
 }
-

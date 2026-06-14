@@ -8,6 +8,8 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
   WAHA_BASE_URL: z.string().url().default("http://localhost:3001"),
   WAHA_API_KEY: z.string().optional(),
   WAHA_SESSION: z.string().default("default"),
