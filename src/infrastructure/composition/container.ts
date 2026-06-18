@@ -1,5 +1,5 @@
-import { RegisterWhatsAppMessageUseCase } from "../../application/use-cases/register-whatsapp-message.js";
 import { CreateTransactionUseCase } from "../../application/use-cases/create-transaction.js";
+import { MessageProcessorService } from "../../application/services/message-processor-service.js";
 import { SystemClock } from "../../application/ports/clock.js";
 import { createSupabaseClient } from "../persistence/supabase/client.js";
 import {
@@ -20,12 +20,17 @@ export function buildContainer() {
   const transactions = new SupabaseTransactionRepository(supabase);
   const cropPlans = new SupabaseCropPlanRepository(supabase);
   const processedMessages = new SupabaseProcessedMessageRepository(supabase);
-  const whatsApp = new WahaClient(processedMessages);
+  const whatsApp = new WahaClient();
   const clock = new SystemClock();
   const createTransaction = new CreateTransactionUseCase(users, usage, transactions, cropPlans, clock);
 
   return {
-    registerWhatsAppMessage: new RegisterWhatsAppMessageUseCase(users, farms, whatsApp, createTransaction)
+    messageProcessor: new MessageProcessorService(
+      users,
+      farms,
+      processedMessages,
+      createTransaction
+    ),
+    whatsApp
   };
 }
-

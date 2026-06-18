@@ -1,2 +1,6 @@
-export { RegisterWhatsAppMessageUseCase } from "../../application/use-cases/register-whatsapp-message.js";
-
+export { MessageProcessorService } from "../../application/services/message-processor-service.js";
+export type {
+  AgentResponseDTO,
+  InboundMessageDTO,
+  MessageProcessingInput
+} from "../../application/dtos/message-dtos.js";

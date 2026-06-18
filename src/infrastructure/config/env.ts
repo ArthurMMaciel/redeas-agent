@@ -16,7 +16,8 @@ const envSchema = z.object({
   WAHA_DRY_RUN: z.coerce.boolean().default(false),
   PAYMENT_PROVIDER: z.string().default("pagarme"),
   PAGARME_API_KEY: z.string().optional(),
-  APP_BASE_URL: z.string().url().default("http://localhost:3000")
+  APP_BASE_URL: z.string().url().default("http://localhost:3000"),
+  AGENT_API_KEY: z.string().optional()
 });
 
 export const env = envSchema.parse(process.env);

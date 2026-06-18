@@ -13,10 +13,51 @@ export function registerWebhookRoutes(app: FastifyInstance) {
   app.post("/webhooks/waha", async (request, reply) => {
     const message = extractWahaMessage(request.body);
     if (!message) {
+      request.log.debug("Ignored invalid or outbound WAHA message");
       return reply.code(202).send({ accepted: false, reason: "ignored_or_invalid_message" });
     }
 
-    await getContainer().registerWhatsAppMessage.execute(message);
+    request.log.info(
+      {
+        channel: "whatsapp",
+        conversationId: message.phone,
+        messageId: message.providerMessageId
+      },
+      "Processing WAHA message"
+    );
+
+    const currentContainer = getContainer();
+    const result = await currentContainer.messageProcessor.process({
+      channel: "whatsapp",
+      conversationId: message.phone,
+      message: {
+        id: message.providerMessageId,
+        timestamp: message.receivedAt.toISOString(),
+        type: "text",
+        content: message.text
+      },
+      identity: {
+        phone: message.phone
+      }
+    });
+
+    if (result.response.metadata.duplicate !== true) {
+      await currentContainer.whatsApp.sendText({
+        phone: message.phone,
+        text: result.response.message
+      });
+    }
+
+    request.log.info(
+      {
+        channel: "whatsapp",
+        conversationId: message.phone,
+        messageId: message.providerMessageId,
+        duplicate: result.response.metadata.duplicate
+      },
+      "WAHA message processed"
+    );
+
     return reply.code(202).send({ accepted: true });
   });
 

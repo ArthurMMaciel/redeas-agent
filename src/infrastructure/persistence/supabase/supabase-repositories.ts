@@ -6,6 +6,7 @@ import type {
   UsageRepository,
   UserRepository
 } from "../../../application/ports/repositories.js";
+import type { ProcessedMessageRepository } from "../../../application/ports/messaging.js";
 import type { CropPlan, FinancialTransaction } from "../../../domain/entities.js";
 import type { AgriculturalCategory } from "../../../domain/enums.js";
 import type { BudgetItemId, FarmId, MoneyCents, TransactionId, UserId } from "../../../shared/types.js";
@@ -226,14 +227,15 @@ export class SupabaseCropPlanRepository implements CropPlanRepository {
   }
 }
 
-export class SupabaseProcessedMessageRepository {
+export class SupabaseProcessedMessageRepository implements ProcessedMessageRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  async wasProcessed(providerMessageId: string): Promise<boolean> {
+  async wasProcessed(messageId: string, channel: string): Promise<boolean> {
+    const storageId = processedMessageStorageId(messageId, channel);
     const { data, error } = await this.supabase
       .from("processed_messages")
       .select("provider_message_id")
-      .eq("provider_message_id", providerMessageId)
+      .eq("provider_message_id", storageId)
       .maybeSingle();
 
     if (isMissingTableError(error)) return false;
@@ -241,10 +243,11 @@ export class SupabaseProcessedMessageRepository {
     return Boolean(data);
   }
 
-  async markProcessed(providerMessageId: string): Promise<void> {
+  async markProcessed(messageId: string, channel: string): Promise<void> {
+    const storageId = processedMessageStorageId(messageId, channel);
     const { error } = await this.supabase
       .from("processed_messages")
-      .upsert({ provider_message_id: providerMessageId, provider: "waha" });
+      .upsert({ provider_message_id: storageId, provider: channel });
 
     if (isMissingTableError(error)) return;
     if (error) throw error;
@@ -253,4 +256,8 @@ export class SupabaseProcessedMessageRepository {
 
 function isMissingTableError(error: { code?: string } | null): boolean {
   return error?.code === "PGRST205";
+}
+
+function processedMessageStorageId(messageId: string, channel: string): string {
+  return `${channel}:${messageId}`;
 }

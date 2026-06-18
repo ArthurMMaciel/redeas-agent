@@ -7,7 +7,9 @@ export interface IncomingWhatsAppMessage {
 
 export interface WhatsAppGateway {
   sendText(input: { phone: string; text: string }): Promise<void>;
-  wasMessageProcessed(providerMessageId: string): Promise<boolean>;
-  markMessageProcessed(providerMessageId: string): Promise<void>;
 }
 
+export interface ProcessedMessageRepository {
+  wasProcessed(messageId: string, channel: string): Promise<boolean>;
+  markProcessed(messageId: string, channel: string): Promise<void>;
+}
