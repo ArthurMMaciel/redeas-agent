@@ -9,10 +9,13 @@ import type {
 import type {
   BudgetItemId,
   CardId,
+  CheckoutIntentId,
   CropPlanId,
   FarmId,
   InstallmentPurchaseId,
   MoneyCents,
+  PlanId,
+  ScheduledEventId,
   TransactionId,
   UserId
 } from "../shared/types.js";
@@ -27,6 +30,42 @@ export interface User {
   deletedAt: Date | null;
 }
 
+export interface Plan {
+  id: PlanId;
+  code: string;
+  name: string;
+  priceCents: MoneyCents;
+  currency: string;
+  dailyTransactionLimit: number | null;
+  activeCropPlanLimit: number | null;
+  canReceiveDailyReport: boolean;
+  hasFinancialControl: boolean;
+  hasAgenda: boolean;
+  hasCropPlanning: boolean;
+}
+
+export interface CheckoutIntent {
+  id: CheckoutIntentId;
+  planId: PlanId;
+  planCode: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  farmName: string;
+  city: string;
+  state: string;
+  mainActivity: string;
+  status: "pending" | "paid" | "failed" | "expired";
+  gateway: string;
+  gatewayCheckoutId: string | null;
+  gatewayPaymentId: string | null;
+  checkoutUrl: string | null;
+  paidAt: Date | null;
+  createdUserId: UserId | null;
+  createdFarmId: FarmId | null;
+  createdAt: Date;
+}
+
 export interface Farm {
   id: FarmId;
   name: string;
@@ -34,6 +73,20 @@ export interface Farm {
   state: string;
   mainActivity: string;
   ownerUserId: UserId;
+  createdAt: Date;
+  deletedAt: Date | null;
+}
+
+export interface ScheduledEvent {
+  id: ScheduledEventId;
+  farmId: FarmId;
+  userId: UserId;
+  title: string;
+  description: string | null;
+  startsAt: Date;
+  endsAt: Date | null;
+  status: "scheduled" | "done" | "canceled";
+  source: string;
   createdAt: Date;
   deletedAt: Date | null;
 }
@@ -106,4 +159,3 @@ export interface InstallmentPurchase {
   cropPlanId: CropPlanId | null;
   createdAt: Date;
 }
-

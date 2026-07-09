@@ -24,4 +24,5 @@ export type CropPlanStatus = "active" | "paused" | "closed";
 export type SubscriptionStatus = "free" | "trialing" | "active" | "past_due" | "canceled";
 export type UserRole = "owner" | "farm_admin" | "operator" | "viewer" | "internal_admin";
 export type AuditAction = "create" | "update" | "delete";
-
+export type CheckoutStatus = "pending" | "paid" | "failed" | "expired";
+export type ScheduledEventStatus = "scheduled" | "done" | "canceled";

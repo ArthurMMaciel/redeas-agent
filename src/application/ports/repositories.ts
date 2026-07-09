@@ -1,18 +1,22 @@
 import type {
   Card,
+  CheckoutIntent,
   CropPlan,
   Farm,
   FinancialTransaction,
   InstallmentPurchase,
+  Plan,
   PlannedBudgetItem,
   User
 } from "../../domain/entities.js";
 import type {
   BudgetItemId,
+  CheckoutIntentId,
   CropPlanId,
   FarmId,
   InstallmentPurchaseId,
   MoneyCents,
+  PlanId,
   TransactionId,
   UserId
 } from "../../shared/types.js";
@@ -26,6 +30,67 @@ export interface UserRepository {
     name: string;
     email?: string | null;
   }): Promise<User>;
+  upsertPaidUser(input: {
+    phone: string;
+    name: string;
+    email?: string | null;
+  }): Promise<User>;
+}
+
+export interface PlanRepository {
+  findByCode(code: string): Promise<Plan | null>;
+  findById(planId: PlanId): Promise<Plan | null>;
+}
+
+export interface SubscriptionRepository {
+  createOrReplaceActive(input: {
+    userId: UserId;
+    planId: PlanId;
+    gateway: string;
+    gatewayCustomerId?: string | null;
+    gatewaySubscriptionId?: string | null;
+    currentPeriodStartsAt?: Date | null;
+    currentPeriodEndsAt?: Date | null;
+  }): Promise<void>;
+}
+
+export interface CheckoutIntentRepository {
+  create(input: {
+    plan: Plan;
+    name: string;
+    phone: string;
+    email?: string | null;
+    farmName: string;
+    city: string;
+    state: string;
+    mainActivity: string;
+    gateway: string;
+  }): Promise<CheckoutIntent>;
+  attachGatewayCheckout(input: {
+    checkoutIntentId: CheckoutIntentId;
+    gatewayCheckoutId: string;
+    checkoutUrl: string;
+  }): Promise<CheckoutIntent>;
+  findByGatewayCheckoutId(input: {
+    gateway: string;
+    gatewayCheckoutId: string;
+  }): Promise<CheckoutIntent | null>;
+  markPaid(input: {
+    checkoutIntentId: CheckoutIntentId;
+    gatewayPaymentId?: string | null;
+    rawGatewayPayload: unknown;
+  }): Promise<CheckoutIntent>;
+  attachProvisionedResources(input: {
+    checkoutIntentId: CheckoutIntentId;
+    userId: UserId;
+    farmId: FarmId;
+  }): Promise<void>;
+  savePaymentEvent(input: {
+    gateway: string;
+    externalId?: string | null;
+    eventType: string;
+    payload: unknown;
+  }): Promise<void>;
 }
 
 export interface FarmRepository {
@@ -76,4 +141,3 @@ export interface ReportRepository {
   listUsersEligibleForDailyReport(): Promise<User[]>;
   saveDailyReport(input: { userId: UserId; content: string; sentAt: Date }): Promise<void>;
 }
-

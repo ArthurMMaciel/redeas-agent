@@ -61,7 +61,8 @@ export function registerWebhookRoutes(app: FastifyInstance) {
     return reply.code(202).send({ accepted: true });
   });
 
-  app.post("/webhooks/payments", async (_request, reply) => {
-    return reply.code(202).send({ accepted: true });
+  app.post("/webhooks/payments", async (request, reply) => {
+    const result = await getContainer().processPaymentWebhook.execute(request.body);
+    return reply.code(result.accepted ? 202 : 400).send(result);
   });
 }

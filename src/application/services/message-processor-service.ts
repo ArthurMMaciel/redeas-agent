@@ -4,10 +4,7 @@ import type {
 } from "../dtos/message-dtos.js";
 import type { ProcessedMessageRepository } from "../ports/messaging.js";
 import type { FarmRepository, UserRepository } from "../ports/repositories.js";
-import {
-  parseQuickSignup,
-  parseTransactionMessage
-} from "./financial-message-parser.js";
+import { parseTransactionMessage } from "./financial-message-parser.js";
 import type { CreateTransactionUseCase } from "../use-cases/create-transaction.js";
 import {
   formatAgriculturalCategory,
@@ -57,8 +54,14 @@ export class MessageProcessorService {
         : null;
 
     if (!user) {
-      if (input.channel === "whatsapp" && phone) {
-        return this.processUnknownWhatsAppUser(input, phone);
+      if (input.channel === "whatsapp") {
+        return this.finish(
+          input,
+          [
+            "Olá! Para ativar o Rédeas, faça seu cadastro e pagamento pela página oficial.",
+            "Depois da aprovação, eu libero seu atendimento por este número."
+          ].join("\n")
+        );
       }
 
       if (!input.userId && !phone) {
@@ -69,6 +72,17 @@ export class MessageProcessorService {
       }
 
       throw new MessageProcessingError("user_not_found", "Usuário não encontrado.");
+    }
+
+    if (!["active", "trialing"].includes(user.subscriptionStatus)) {
+      return this.finish(
+        input,
+        [
+          "Seu acesso ao Rédeas ainda não está ativo.",
+          "Conclua o pagamento pela página oficial para liberar o atendimento por este número."
+        ].join("\n"),
+        { userId: user.id, subscriptionStatus: user.subscriptionStatus }
+      );
     }
 
     const farm = await this.farms.findDefaultByUserId(user.id);
@@ -121,45 +135,6 @@ export class MessageProcessorService {
         "Tente algo como: gastei R$ 500,00 em manutenção ou recebi R$ 12.000,00 da venda de milho."
       ].join("\n"),
       { userId: user.id, farmId: farm.id }
-    );
-  }
-
-  private async processUnknownWhatsAppUser(
-    input: MessageProcessingInput,
-    phone: string
-  ): Promise<AgentResponseDTO> {
-    const signup = parseQuickSignup(input.message.content);
-    if (!signup) {
-      return this.finish(
-        input,
-        [
-          "Olá! Eu sou seu assistente financeiro agrícola.",
-          "Para criar seu cadastro, responda neste formato:",
-          "cadastro Seu Nome | Nome da Fazenda | Cidade/UF | Cultura principal"
-        ].join("\n")
-      );
-    }
-
-    const createdUser = await this.users.createFreeUser({
-      phone,
-      name: signup.name
-    });
-    await this.farms.create({
-      ownerUserId: createdUser.id,
-      name: signup.farmName,
-      city: signup.city,
-      state: signup.state,
-      mainActivity: signup.mainActivity
-    });
-
-    return this.finish(
-      input,
-      [
-        `Cadastro criado para ${signup.name}.`,
-        `Fazenda: ${signup.farmName} - ${signup.city}/${signup.state}.`,
-        "Plano grátis ativo: limite de 5 lançamentos por dia."
-      ].join("\n"),
-      { userId: createdUser.id }
     );
   }
 

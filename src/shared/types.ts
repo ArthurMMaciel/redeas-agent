@@ -7,6 +7,9 @@ export type BudgetItemId = Brand<string, "BudgetItemId">;
 export type TransactionId = Brand<string, "TransactionId">;
 export type CardId = Brand<string, "CardId">;
 export type InstallmentPurchaseId = Brand<string, "InstallmentPurchaseId">;
+export type PlanId = Brand<string, "PlanId">;
+export type CheckoutIntentId = Brand<string, "CheckoutIntentId">;
+export type ScheduledEventId = Brand<string, "ScheduledEventId">;
 
 export type MoneyCents = Brand<number, "MoneyCents">;
 
@@ -19,4 +22,3 @@ export function moneyCents(value: number): MoneyCents {
 }
 
 export const BRAZIL_TIME_ZONE = "America/Sao_Paulo";
-

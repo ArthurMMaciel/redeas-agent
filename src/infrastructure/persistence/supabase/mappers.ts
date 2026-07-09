@@ -1,7 +1,9 @@
 import type {
+  CheckoutIntent,
   CropPlan,
   Farm,
   FinancialTransaction,
+  Plan,
   PlannedBudgetItem,
   User
 } from "../../../domain/entities.js";
@@ -30,6 +32,46 @@ export function mapFarm(row: Record<string, unknown>): Farm {
     mainActivity: String(row.main_activity),
     createdAt: new Date(String(row.created_at)),
     deletedAt: row.deleted_at ? new Date(String(row.deleted_at)) : null
+  };
+}
+
+export function mapPlan(row: Record<string, unknown>): Plan {
+  return {
+    id: row.id as never,
+    code: String(row.code),
+    name: String(row.name),
+    priceCents: moneyCents(Number(row.price_cents ?? 0)),
+    currency: String(row.currency ?? "BRL"),
+    dailyTransactionLimit: nullableNumber(row.daily_transaction_limit),
+    activeCropPlanLimit: nullableNumber(row.active_crop_plan_limit),
+    canReceiveDailyReport: Boolean(row.can_receive_daily_report),
+    hasFinancialControl: Boolean(row.has_financial_control),
+    hasAgenda: Boolean(row.has_agenda),
+    hasCropPlanning: Boolean(row.has_crop_planning)
+  };
+}
+
+export function mapCheckoutIntent(row: Record<string, unknown>): CheckoutIntent {
+  return {
+    id: row.id as never,
+    planId: row.plan_id as never,
+    planCode: String(row.plan_code),
+    name: String(row.name),
+    phone: String(row.phone),
+    email: row.email ? String(row.email) : null,
+    farmName: String(row.farm_name),
+    city: String(row.city),
+    state: String(row.state),
+    mainActivity: String(row.main_activity),
+    status: row.status as never,
+    gateway: String(row.gateway),
+    gatewayCheckoutId: row.gateway_checkout_id ? String(row.gateway_checkout_id) : null,
+    gatewayPaymentId: row.gateway_payment_id ? String(row.gateway_payment_id) : null,
+    checkoutUrl: row.checkout_url ? String(row.checkout_url) : null,
+    paidAt: row.paid_at ? new Date(String(row.paid_at)) : null,
+    createdUserId: row.created_user_id as never,
+    createdFarmId: row.created_farm_id as never,
+    createdAt: new Date(String(row.created_at))
   };
 }
 
@@ -81,3 +123,6 @@ export function toDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+function nullableNumber(value: unknown): number | null {
+  return value === null || value === undefined ? null : Number(value);
+}

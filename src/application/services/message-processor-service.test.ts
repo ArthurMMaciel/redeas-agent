@@ -9,7 +9,7 @@ const user = {
   phone: "5544999999999",
   email: null,
   name: "João",
-  subscriptionStatus: "free",
+  subscriptionStatus: "active",
   createdAt: new Date(),
   deletedAt: null
 } as User;
@@ -29,7 +29,8 @@ function createDependencies() {
   const users: UserRepository = {
     findByPhone: vi.fn().mockResolvedValue(user),
     findById: vi.fn().mockResolvedValue(user),
-    createFreeUser: vi.fn().mockResolvedValue(user)
+    createFreeUser: vi.fn().mockResolvedValue(user),
+    upsertPaidUser: vi.fn().mockResolvedValue(user)
   };
   const farms: FarmRepository = {
     findDefaultByUserId: vi.fn().mockResolvedValue(farm),

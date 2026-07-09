@@ -1,16 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  CheckoutIntentRepository,
   CropPlanRepository,
   FarmRepository,
+  PlanRepository,
+  SubscriptionRepository,
   TransactionRepository,
   UsageRepository,
   UserRepository
 } from "../../../application/ports/repositories.js";
 import type { ProcessedMessageRepository } from "../../../application/ports/messaging.js";
-import type { CropPlan, FinancialTransaction } from "../../../domain/entities.js";
+import type { CropPlan, FinancialTransaction, Plan } from "../../../domain/entities.js";
 import type { AgriculturalCategory } from "../../../domain/enums.js";
-import type { BudgetItemId, FarmId, MoneyCents, TransactionId, UserId } from "../../../shared/types.js";
-import { mapBudgetItem, mapCropPlan, mapFarm, mapTransaction, mapUser, toDateOnly } from "./mappers.js";
+import type { BudgetItemId, CheckoutIntentId, FarmId, MoneyCents, PlanId, TransactionId, UserId } from "../../../shared/types.js";
+import { mapBudgetItem, mapCheckoutIntent, mapCropPlan, mapFarm, mapPlan, mapTransaction, mapUser, toDateOnly } from "./mappers.js";
 
 export class SupabaseUserRepository implements UserRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -53,6 +56,106 @@ export class SupabaseUserRepository implements UserRepository {
     const { data, error } = await this.supabase.from("users").insert(insert).select("*").single();
     if (error) throw error;
     return mapUser(data);
+  }
+
+  async upsertPaidUser(input: { phone: string; name: string; email?: string | null }) {
+    const existing = await this.findByPhone(input.phone);
+    if (existing) {
+      const update: Record<string, unknown> = {
+        name: input.name,
+        subscription_status: "active",
+        updated_at: new Date().toISOString()
+      };
+
+      if (input.email) {
+        update.email = input.email;
+      }
+
+      const { data, error } = await this.supabase
+        .from("users")
+        .update(update)
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      return mapUser(data);
+    }
+
+    const insert: Record<string, unknown> = {
+      phone: input.phone,
+      name: input.name,
+      subscription_status: "active"
+    };
+
+    if (input.email) {
+      insert.email = input.email;
+    }
+
+    const { data, error } = await this.supabase.from("users").insert(insert).select("*").single();
+    if (error) throw error;
+    return mapUser(data);
+  }
+}
+
+export class SupabasePlanRepository implements PlanRepository {
+  constructor(private readonly supabase: SupabaseClient) {}
+
+  async findByCode(code: string) {
+    const { data, error } = await this.supabase
+      .from("plans")
+      .select("*")
+      .eq("code", code)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data ? mapPlan(data) : null;
+  }
+
+  async findById(planId: PlanId) {
+    const { data, error } = await this.supabase
+      .from("plans")
+      .select("*")
+      .eq("id", planId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data ? mapPlan(data) : null;
+  }
+}
+
+export class SupabaseSubscriptionRepository implements SubscriptionRepository {
+  constructor(private readonly supabase: SupabaseClient) {}
+
+  async createOrReplaceActive(input: {
+    userId: UserId;
+    planId: PlanId;
+    gateway: string;
+    gatewayCustomerId?: string | null;
+    gatewaySubscriptionId?: string | null;
+    currentPeriodStartsAt?: Date | null;
+    currentPeriodEndsAt?: Date | null;
+  }): Promise<void> {
+    const { error: cancelError } = await this.supabase
+      .from("subscriptions")
+      .update({ status: "canceled", updated_at: new Date().toISOString() })
+      .eq("user_id", input.userId)
+      .eq("status", "active");
+
+    if (cancelError) throw cancelError;
+
+    const { error } = await this.supabase.from("subscriptions").insert({
+      user_id: input.userId,
+      plan_id: input.planId,
+      status: "active",
+      gateway: input.gateway,
+      gateway_customer_id: input.gatewayCustomerId ?? null,
+      gateway_subscription_id: input.gatewaySubscriptionId ?? null,
+      current_period_starts_at: input.currentPeriodStartsAt?.toISOString() ?? null,
+      current_period_ends_at: input.currentPeriodEndsAt?.toISOString() ?? null
+    });
+
+    if (error) throw error;
   }
 }
 
@@ -224,6 +327,129 @@ export class SupabaseCropPlanRepository implements CropPlanRepository {
 
     if (error) throw error;
     return mapBudgetItem(data);
+  }
+}
+
+export class SupabaseCheckoutIntentRepository implements CheckoutIntentRepository {
+  constructor(private readonly supabase: SupabaseClient) {}
+
+  async create(input: {
+    plan: Plan;
+    name: string;
+    phone: string;
+    email?: string | null;
+    farmName: string;
+    city: string;
+    state: string;
+    mainActivity: string;
+    gateway: string;
+  }) {
+    const { data, error } = await this.supabase
+      .from("checkout_intents")
+      .insert({
+        plan_id: input.plan.id,
+        plan_code: input.plan.code,
+        name: input.name,
+        phone: input.phone,
+        email: input.email ?? null,
+        farm_name: input.farmName,
+        city: input.city,
+        state: input.state,
+        main_activity: input.mainActivity,
+        gateway: input.gateway
+      })
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return mapCheckoutIntent(data);
+  }
+
+  async attachGatewayCheckout(input: {
+    checkoutIntentId: CheckoutIntentId;
+    gatewayCheckoutId: string;
+    checkoutUrl: string;
+  }) {
+    const { data, error } = await this.supabase
+      .from("checkout_intents")
+      .update({
+        gateway_checkout_id: input.gatewayCheckoutId,
+        checkout_url: input.checkoutUrl,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.checkoutIntentId)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return mapCheckoutIntent(data);
+  }
+
+  async findByGatewayCheckoutId(input: { gateway: string; gatewayCheckoutId: string }) {
+    const { data, error } = await this.supabase
+      .from("checkout_intents")
+      .select("*")
+      .eq("gateway", input.gateway)
+      .eq("gateway_checkout_id", input.gatewayCheckoutId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data ? mapCheckoutIntent(data) : null;
+  }
+
+  async markPaid(input: {
+    checkoutIntentId: CheckoutIntentId;
+    gatewayPaymentId?: string | null;
+    rawGatewayPayload: unknown;
+  }) {
+    const { data, error } = await this.supabase
+      .from("checkout_intents")
+      .update({
+        status: "paid",
+        gateway_payment_id: input.gatewayPaymentId ?? null,
+        raw_gateway_payload: input.rawGatewayPayload,
+        paid_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.checkoutIntentId)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return mapCheckoutIntent(data);
+  }
+
+  async attachProvisionedResources(input: {
+    checkoutIntentId: CheckoutIntentId;
+    userId: UserId;
+    farmId: FarmId;
+  }): Promise<void> {
+    const { error } = await this.supabase
+      .from("checkout_intents")
+      .update({
+        created_user_id: input.userId,
+        created_farm_id: input.farmId,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", input.checkoutIntentId);
+
+    if (error) throw error;
+  }
+
+  async savePaymentEvent(input: {
+    gateway: string;
+    externalId?: string | null;
+    eventType: string;
+    payload: unknown;
+  }): Promise<void> {
+    const { error } = await this.supabase.from("payment_events").insert({
+      gateway: input.gateway,
+      external_id: input.externalId ?? null,
+      event_type: input.eventType,
+      payload: input.payload
+    });
+
+    if (error) throw error;
   }
 }
 
