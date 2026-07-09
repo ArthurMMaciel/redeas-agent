@@ -30,6 +30,7 @@ Preencha `.env.waha`:
 
 ```text
 WAHA_API_KEY=gere_uma_chave_longa
+WAHA_API_KEY_PLAIN=mesma_chave_do_WAHA_API_KEY
 WAHA_DASHBOARD_PASSWORD=gere_uma_senha_longa
 ```
 
