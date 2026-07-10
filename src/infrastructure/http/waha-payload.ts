@@ -14,7 +14,12 @@ export function extractWahaMessage(
   }
 
   const payload = isRecord(body.payload) ? body.payload : body;
+  const providerMessageId =
+    firstString(payload.id, payload.messageId, payload.message_id, nestedString(payload.key, "id")) ??
+    firstString(body.id, body.messageId, body.message_id);
+  const groupIdFromMessageId = extractGroupId(providerMessageId);
   const rawChatId = firstString(
+    groupIdFromMessageId,
     payload.chatId,
     payload.chat_id,
     payload.from,
@@ -40,10 +45,6 @@ export function extractWahaMessage(
           )
         )
     : normalizePhone(rawChatId);
-  const providerMessageId =
-    firstString(payload.id, payload.messageId, payload.message_id, nestedString(payload.key, "id")) ??
-    firstString(body.id, body.messageId, body.message_id);
-
   if (!text || !chatId || !senderPhone || !providerMessageId) {
     return null;
   }
@@ -77,6 +78,10 @@ function normalizePhone(raw: string | null): string | null {
     .replace(/@c\.us$/, "")
     .replace(/@s\.whatsapp\.net$/, "")
     .replace(/\D/g, "");
+}
+
+function extractGroupId(value: string | null): string | null {
+  return value?.match(/\d+@g\.us/)?.[0] ?? null;
 }
 
 function parseTimestamp(raw: unknown): Date | null {

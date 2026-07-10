@@ -80,4 +80,28 @@ describe("extractWahaMessage", () => {
       isGroup: true
     });
   });
+
+  it("recupera o grupo pelo id da mensagem quando o chat vem como lid", () => {
+    const message = extractWahaMessage(
+      {
+        payload: {
+          id: "false_120363423533383999@g.us_ABCDEF_11085394505852@lid",
+          chatId: "11085394505852@lid",
+          fromMe: true,
+          body: "redeas gastei 50 com combustivel"
+        }
+      },
+      {
+        processGroupFromMe: true,
+        ownPhone: "554498924520"
+      }
+    );
+
+    expect(message).toMatchObject({
+      chatId: "120363423533383999@g.us",
+      senderPhone: "554498924520",
+      isGroup: true,
+      fromMe: true
+    });
+  });
 });

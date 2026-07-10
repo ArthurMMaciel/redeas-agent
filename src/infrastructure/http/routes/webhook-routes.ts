@@ -37,6 +37,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
           senderPhone: message.senderPhone,
           isGroup: message.isGroup,
           fromMe: message.fromMe,
+          textPreview: preview(message.text),
           messageId: message.providerMessageId
         },
         "Ignored WAHA message without Redeas prefix"
@@ -143,6 +144,10 @@ function summarizeWahaPayload(body: unknown): Record<string, unknown> | null {
     fromMe: Boolean(payload.fromMe ?? payload.from_me ?? key.fromMe),
     hasText: Boolean(firstString(payload.body, payload.text, payload.message, payload.caption))
   };
+}
+
+function preview(text: string): string {
+  return text.length > 80 ? `${text.slice(0, 80)}...` : text;
 }
 
 function firstString(...values: unknown[]): string | null {
