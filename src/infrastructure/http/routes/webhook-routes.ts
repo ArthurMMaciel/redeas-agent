@@ -59,11 +59,18 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       return reply.code(202).send({ accepted: false, reason: "group_not_allowed" });
     }
 
+    const identityPhone = resolveIdentityPhone({
+      isGroup: message.isGroup,
+      senderPhone: message.senderPhone,
+      groupDefaultUserPhone: env.WAHA_GROUP_DEFAULT_USER_PHONE ?? null
+    });
+
     request.log.info(
       {
         channel: "whatsapp",
         conversationId: message.chatId,
         senderPhone: message.senderPhone,
+        identityPhone,
         isGroup: message.isGroup,
         fromMe: message.fromMe,
         messageId: message.providerMessageId
@@ -82,7 +89,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         content: commandText
       },
       identity: {
-        phone: message.senderPhone
+        phone: identityPhone
       }
     });
 
@@ -98,6 +105,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         channel: "whatsapp",
         conversationId: message.chatId,
         senderPhone: message.senderPhone,
+        identityPhone,
         isGroup: message.isGroup,
         fromMe: message.fromMe,
         messageId: message.providerMessageId,
@@ -118,6 +126,18 @@ export function registerWebhookRoutes(app: FastifyInstance) {
 export function extractRedeasCommand(text: string): string | null {
   const match = text.trim().match(/^redeas(?:\s+|[:,.-]\s*)(.+)$/i);
   return match?.[1]?.trim() || null;
+}
+
+export function resolveIdentityPhone(input: {
+  isGroup: boolean;
+  senderPhone: string;
+  groupDefaultUserPhone?: string | null;
+}): string {
+  if (input.isGroup && input.groupDefaultUserPhone?.trim()) {
+    return input.groupDefaultUserPhone.replace(/\D/g, "");
+  }
+
+  return input.senderPhone;
 }
 
 function isAllowedGroup(groupId: string): boolean {

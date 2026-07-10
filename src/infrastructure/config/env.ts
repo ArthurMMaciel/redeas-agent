@@ -15,6 +15,7 @@ const envSchema = z.object({
   WAHA_SESSION: z.string().default("default"),
   WAHA_DRY_RUN: z.coerce.boolean().default(false),
   WAHA_ALLOWED_GROUP_IDS: z.string().optional(),
+  WAHA_GROUP_DEFAULT_USER_PHONE: z.string().optional(),
   WAHA_PROCESS_GROUP_FROM_ME: z.coerce.boolean().default(false),
   WAHA_OWN_PHONE: z.string().optional(),
   PAYMENT_PROVIDER: z.string().default("pagarme"),
