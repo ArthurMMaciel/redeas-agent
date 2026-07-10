@@ -4,9 +4,10 @@ import type { WhatsAppGateway, WhatsAppSendResult } from "../../application/port
 export class WahaClient implements WhatsAppGateway {
   async sendText(input: { phone: string; text: string }): Promise<WhatsAppSendResult> {
     if (env.WAHA_DRY_RUN) {
-      return { status: 200, body: null };
+      return { status: 200, requestedChatId: input.phone, resolvedChatId: input.phone, body: null };
     }
 
+    const chatId = await this.resolveSendChatId(input.phone);
     const response = await fetch(`${env.WAHA_BASE_URL}/api/sendText`, {
       method: "POST",
       headers: {
@@ -15,7 +16,7 @@ export class WahaClient implements WhatsAppGateway {
       },
       body: JSON.stringify({
         session: env.WAHA_SESSION,
-        chatId: input.phone,
+        chatId,
         text: input.text
       })
     });
@@ -26,8 +27,35 @@ export class WahaClient implements WhatsAppGateway {
 
     return {
       status: response.status,
+      requestedChatId: input.phone,
+      resolvedChatId: chatId,
       body: await response.text()
     };
+  }
+
+  async resolveSendChatId(chatId: string): Promise<string> {
+    if (!isBrazilianPrivateChatId(chatId)) {
+      return chatId;
+    }
+
+    const phone = normalizePhone(chatId);
+    const response = await fetch(
+      `${env.WAHA_BASE_URL}/api/contacts/check-exists?phone=${encodeURIComponent(phone)}&session=${encodeURIComponent(env.WAHA_SESSION)}`,
+      {
+        method: "GET",
+        headers: {
+          ...(env.WAHA_API_KEY ? { "X-Api-Key": env.WAHA_API_KEY } : {})
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`WAHA check-exists failed with status ${response.status}: ${await response.text()}`);
+    }
+
+    const payload = (await response.json()) as unknown;
+    const checkedChatId = extractExistingChatId(payload);
+    return checkedChatId ?? chatId;
   }
 
   async resolveLidPhone(lid: string): Promise<string | null> {
@@ -61,6 +89,18 @@ function extractPhoneFromLidLookup(payload: unknown): string | null {
   }
 
   return firstString(payload.pn, payload.phone, payload.phoneNumber, payload.number);
+}
+
+function extractExistingChatId(payload: unknown): string | null {
+  if (!isRecord(payload) || payload.numberExists !== true) {
+    return null;
+  }
+
+  return firstString(payload.chatId);
+}
+
+function isBrazilianPrivateChatId(chatId: string): boolean {
+  return /^55\d+@c\.us$/.test(chatId);
 }
 
 function normalizePhone(raw: string): string {

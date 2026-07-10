@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { WhatsAppSendResult } from "../../../application/ports/messaging.js";
 import { buildContainer } from "../../composition/container.js";
 import { env } from "../../config/env.js";
 import { extractWahaMessage } from "../waha-payload.js";
@@ -104,7 +105,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       identityPhone
     });
 
-    let sendResult: { status: number; body: string | null } | null = null;
+    let sendResult: WhatsAppSendResult | null = null;
     if (result.response.metadata.duplicate !== true) {
       request.log.info(
         {
@@ -129,6 +130,8 @@ export function registerWebhookRoutes(app: FastifyInstance) {
           session: env.WAHA_SESSION,
           chatId: replyChatId,
           status: sendResult.status,
+          requestedChatId: sendResult.requestedChatId,
+          resolvedChatId: sendResult.resolvedChatId,
           bodyPreview: sendResult.body ? preview(sendResult.body) : null
         },
         "WAHA text message sent"
@@ -147,7 +150,9 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         fromMe: message.fromMe,
         messageId: message.providerMessageId,
         duplicate: result.response.metadata.duplicate,
-        sendStatus: sendResult?.status ?? null
+        sendStatus: sendResult?.status ?? null,
+        requestedChatId: sendResult?.requestedChatId ?? null,
+        resolvedChatId: sendResult?.resolvedChatId ?? null
       },
       "WAHA message processed"
     );

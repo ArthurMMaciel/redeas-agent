@@ -16,6 +16,8 @@ export interface WhatsAppGateway {
 
 export interface WhatsAppSendResult {
   status: number;
+  requestedChatId: string;
+  resolvedChatId: string;
   body: string | null;
 }
 
