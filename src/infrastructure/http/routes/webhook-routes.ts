@@ -98,9 +98,15 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       }
     });
 
+    const replyChatId = resolveReplyChatId({
+      isGroup: message.isGroup,
+      chatId: message.chatId,
+      identityPhone
+    });
+
     if (result.response.metadata.duplicate !== true) {
       await currentContainer.whatsApp.sendText({
-        phone: message.chatId,
+        phone: replyChatId,
         text: result.response.message
       });
     }
@@ -109,6 +115,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       {
         channel: "whatsapp",
         conversationId: message.chatId,
+        replyChatId,
         senderId: message.senderId,
         senderPhone: message.senderPhone,
         identityPhone,
@@ -150,6 +157,18 @@ export async function resolveIdentityPhone(input: {
   }
 
   return input.senderPhone;
+}
+
+export function resolveReplyChatId(input: {
+  isGroup: boolean;
+  chatId: string;
+  identityPhone: string;
+}): string {
+  if (input.isGroup) {
+    return input.chatId;
+  }
+
+  return `${input.identityPhone.replace(/\D/g, "")}@c.us`;
 }
 
 function isLidId(value: string): boolean {

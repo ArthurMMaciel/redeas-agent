@@ -21,7 +21,7 @@ export class WahaClient implements WhatsAppGateway {
     });
 
     if (!response.ok) {
-      throw new Error(`WAHA sendText failed with status ${response.status}`);
+      throw new Error(`WAHA sendText failed with status ${response.status}: ${await response.text()}`);
     }
   }
 
@@ -41,7 +41,7 @@ export class WahaClient implements WhatsAppGateway {
     }
 
     if (!response.ok) {
-      throw new Error(`WAHA lid lookup failed with status ${response.status}`);
+      throw new Error(`WAHA lid lookup failed with status ${response.status}: ${await response.text()}`);
     }
 
     const payload = (await response.json()) as unknown;

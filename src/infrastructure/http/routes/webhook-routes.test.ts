@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractRedeasCommand, resolveIdentityPhone } from "./webhook-routes.js";
+import { extractRedeasCommand, resolveIdentityPhone, resolveReplyChatId } from "./webhook-routes.js";
 
 describe("extractRedeasCommand", () => {
   it("extrai o comando quando a mensagem comeca com redeas", () => {
@@ -62,5 +62,27 @@ describe("resolveIdentityPhone", () => {
         resolveLidPhone: async () => null
       })
     ).toBe("999");
+  });
+});
+
+describe("resolveReplyChatId", () => {
+  it("responde no grupo quando a mensagem veio de grupo", () => {
+    expect(
+      resolveReplyChatId({
+        isGroup: true,
+        chatId: "120363423533383999@g.us",
+        identityPhone: "554498924520"
+      })
+    ).toBe("120363423533383999@g.us");
+  });
+
+  it("responde no telefone real quando a mensagem privada veio como lid", () => {
+    expect(
+      resolveReplyChatId({
+        isGroup: false,
+        chatId: "15595126939882@lid",
+        identityPhone: "554498924520"
+      })
+    ).toBe("554498924520@c.us");
   });
 });
