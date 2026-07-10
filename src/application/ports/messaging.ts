@@ -11,7 +11,12 @@ export interface IncomingWhatsAppMessage {
 }
 
 export interface WhatsAppGateway {
-  sendText(input: { phone: string; text: string }): Promise<void>;
+  sendText(input: { phone: string; text: string }): Promise<WhatsAppSendResult>;
+}
+
+export interface WhatsAppSendResult {
+  status: number;
+  body: string | null;
 }
 
 export interface ProcessedMessageRepository {

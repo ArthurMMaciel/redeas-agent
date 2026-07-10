@@ -1,10 +1,10 @@
 import { env } from "../config/env.js";
-import type { WhatsAppGateway } from "../../application/ports/messaging.js";
+import type { WhatsAppGateway, WhatsAppSendResult } from "../../application/ports/messaging.js";
 
 export class WahaClient implements WhatsAppGateway {
-  async sendText(input: { phone: string; text: string }): Promise<void> {
+  async sendText(input: { phone: string; text: string }): Promise<WhatsAppSendResult> {
     if (env.WAHA_DRY_RUN) {
-      return;
+      return { status: 200, body: null };
     }
 
     const response = await fetch(`${env.WAHA_BASE_URL}/api/sendText`, {
@@ -23,6 +23,11 @@ export class WahaClient implements WhatsAppGateway {
     if (!response.ok) {
       throw new Error(`WAHA sendText failed with status ${response.status}: ${await response.text()}`);
     }
+
+    return {
+      status: response.status,
+      body: await response.text()
+    };
   }
 
   async resolveLidPhone(lid: string): Promise<string | null> {

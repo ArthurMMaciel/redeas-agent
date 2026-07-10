@@ -19,15 +19,20 @@ export class SupabaseUserRepository implements UserRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
   async findByPhone(phone: string) {
+    const candidates = phoneCandidates(phone);
     const { data, error } = await this.supabase
       .from("users")
       .select("*")
-      .eq("phone", phone)
+      .in("phone", candidates)
       .is("deleted_at", null)
-      .maybeSingle();
+      .limit(candidates.length);
 
     if (error) throw error;
-    return data ? mapUser(data) : null;
+    const rows = Array.isArray(data) ? data : [];
+    const selected = candidates
+      .map((candidate) => rows.find((row) => row.phone === candidate))
+      .find(Boolean);
+    return selected ? mapUser(selected) : null;
   }
 
   async findById(userId: UserId) {
@@ -486,4 +491,20 @@ function isMissingTableError(error: { code?: string } | null): boolean {
 
 function processedMessageStorageId(messageId: string, channel: string): string {
   return `${channel}:${messageId}`;
+}
+
+function phoneCandidates(phone: string): string[] {
+  const normalized = phone.replace(/\D/g, "");
+  const candidates = [normalized];
+  const withoutBrazilMobileNine = normalized.match(/^55(\d{2})(\d{8})$/);
+  if (withoutBrazilMobileNine) {
+    candidates.push(`55${withoutBrazilMobileNine[1]}9${withoutBrazilMobileNine[2]}`);
+  }
+
+  const withBrazilMobileNine = normalized.match(/^55(\d{2})9(\d{8})$/);
+  if (withBrazilMobileNine) {
+    candidates.push(`55${withBrazilMobileNine[1]}${withBrazilMobileNine[2]}`);
+  }
+
+  return Array.from(new Set(candidates));
 }

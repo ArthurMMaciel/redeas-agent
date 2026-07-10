@@ -96,7 +96,7 @@ describe("ProcessPaymentWebhookUseCase", () => {
       createOrReplaceActive: vi.fn().mockResolvedValue(undefined)
     };
     const whatsApp: WhatsAppGateway = {
-      sendText: vi.fn().mockResolvedValue(undefined)
+      sendText: vi.fn().mockResolvedValue({ status: 200, body: null })
     };
 
     const useCase = new ProcessPaymentWebhookUseCase(
@@ -141,4 +141,3 @@ describe("ProcessPaymentWebhookUseCase", () => {
     expect(result).toMatchObject({ accepted: true, provisioned: true });
   });
 });
-

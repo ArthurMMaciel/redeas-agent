@@ -104,11 +104,35 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       identityPhone
     });
 
+    let sendResult: { status: number; body: string | null } | null = null;
     if (result.response.metadata.duplicate !== true) {
-      await currentContainer.whatsApp.sendText({
+      request.log.info(
+        {
+          channel: "whatsapp",
+          endpoint: "/api/sendText",
+          session: env.WAHA_SESSION,
+          chatId: replyChatId,
+          textPreview: preview(result.response.message)
+        },
+        "Sending WAHA text message"
+      );
+
+      sendResult = await currentContainer.whatsApp.sendText({
         phone: replyChatId,
         text: result.response.message
       });
+
+      request.log.info(
+        {
+          channel: "whatsapp",
+          endpoint: "/api/sendText",
+          session: env.WAHA_SESSION,
+          chatId: replyChatId,
+          status: sendResult.status,
+          bodyPreview: sendResult.body ? preview(sendResult.body) : null
+        },
+        "WAHA text message sent"
+      );
     }
 
     request.log.info(
@@ -122,7 +146,8 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         isGroup: message.isGroup,
         fromMe: message.fromMe,
         messageId: message.providerMessageId,
-        duplicate: result.response.metadata.duplicate
+        duplicate: result.response.metadata.duplicate,
+        sendStatus: sendResult?.status ?? null
       },
       "WAHA message processed"
     );
