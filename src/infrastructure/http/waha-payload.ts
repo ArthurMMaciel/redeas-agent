@@ -12,21 +12,49 @@ export function extractWahaMessage(body: unknown): IncomingWhatsAppMessage | nul
   }
 
   const text = firstString(payload.body, payload.text, payload.message, payload.caption);
-  const phone = normalizePhone(firstString(payload.from, payload.chatId, payload.chat_id, payload.sender));
+  const rawChatId = firstString(
+    payload.chatId,
+    payload.chat_id,
+    payload.from,
+    nestedString(payload.key, "remoteJid")
+  );
+  const chatId = normalizeWhatsAppId(rawChatId);
+  const isGroup = Boolean(rawChatId?.includes("@g.us") || chatId?.endsWith("@g.us"));
+  const senderPhone = isGroup
+    ? normalizePhone(
+        firstString(
+          payload.sender,
+          payload.participant,
+          payload.author,
+          nestedString(payload.key, "participant")
+        )
+      )
+    : normalizePhone(rawChatId);
   const providerMessageId =
     firstString(payload.id, payload.messageId, payload.message_id, nestedString(payload.key, "id")) ??
     firstString(body.id, body.messageId, body.message_id);
 
-  if (!text || !phone || !providerMessageId) {
+  if (!text || !chatId || !senderPhone || !providerMessageId) {
     return null;
   }
 
   return {
     providerMessageId,
-    phone,
+    phone: senderPhone,
+    chatId,
+    senderPhone,
+    isGroup,
     text,
     receivedAt: parseTimestamp(payload.timestamp) ?? new Date()
   };
+}
+
+function normalizeWhatsAppId(raw: string | null): string | null {
+  if (!raw) {
+    return null;
+  }
+
+  return raw.trim().replace(/@s\.whatsapp\.net$/, "@c.us");
 }
 
 function normalizePhone(raw: string | null): string | null {
@@ -34,7 +62,10 @@ function normalizePhone(raw: string | null): string | null {
     return null;
   }
 
-  return raw.replace(/@c\.us$/, "").replace(/@s\.whatsapp\.net$/, "");
+  return raw
+    .replace(/@c\.us$/, "")
+    .replace(/@s\.whatsapp\.net$/, "")
+    .replace(/\D/g, "");
 }
 
 function parseTimestamp(raw: unknown): Date | null {

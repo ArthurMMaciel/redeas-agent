@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { buildContainer } from "../../composition/container.js";
+import { env } from "../../config/env.js";
 import { extractWahaMessage } from "../waha-payload.js";
 
 let container: ReturnType<typeof buildContainer> | null = null;
@@ -30,10 +31,25 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       return reply.code(202).send({ accepted: false, reason: "missing_redeas_prefix" });
     }
 
+    if (message.isGroup && !isAllowedGroup(message.chatId)) {
+      request.log.info(
+        {
+          channel: "whatsapp",
+          groupId: message.chatId,
+          senderPhone: message.senderPhone,
+          messageId: message.providerMessageId
+        },
+        "Ignored WAHA group message from unallowed group"
+      );
+      return reply.code(202).send({ accepted: false, reason: "group_not_allowed" });
+    }
+
     request.log.info(
       {
         channel: "whatsapp",
-        conversationId: message.phone,
+        conversationId: message.chatId,
+        senderPhone: message.senderPhone,
+        isGroup: message.isGroup,
         messageId: message.providerMessageId
       },
       "Processing WAHA message"
@@ -42,7 +58,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
     const currentContainer = getContainer();
     const result = await currentContainer.messageProcessor.process({
       channel: "whatsapp",
-      conversationId: message.phone,
+      conversationId: message.chatId,
       message: {
         id: message.providerMessageId,
         timestamp: message.receivedAt.toISOString(),
@@ -50,13 +66,13 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         content: commandText
       },
       identity: {
-        phone: message.phone
+        phone: message.senderPhone
       }
     });
 
     if (result.response.metadata.duplicate !== true) {
       await currentContainer.whatsApp.sendText({
-        phone: message.phone,
+        phone: message.chatId,
         text: result.response.message
       });
     }
@@ -64,7 +80,9 @@ export function registerWebhookRoutes(app: FastifyInstance) {
     request.log.info(
       {
         channel: "whatsapp",
-        conversationId: message.phone,
+        conversationId: message.chatId,
+        senderPhone: message.senderPhone,
+        isGroup: message.isGroup,
         messageId: message.providerMessageId,
         duplicate: result.response.metadata.duplicate
       },
@@ -83,4 +101,12 @@ export function registerWebhookRoutes(app: FastifyInstance) {
 export function extractRedeasCommand(text: string): string | null {
   const match = text.trim().match(/^redeas(?:\s+|[:,.-]\s*)(.+)$/i);
   return match?.[1]?.trim() || null;
+}
+
+function isAllowedGroup(groupId: string): boolean {
+  const allowedGroups = env.WAHA_ALLOWED_GROUP_IDS?.split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return !allowedGroups?.length || allowedGroups.includes(groupId);
 }
