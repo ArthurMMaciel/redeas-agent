@@ -19,23 +19,48 @@ describe("extractRedeasCommand", () => {
 });
 
 describe("resolveIdentityPhone", () => {
-  it("usa o telefone padrao configurado para grupos", () => {
+  it("usa o telefone padrao configurado para grupos", async () => {
     expect(
-      resolveIdentityPhone({
+      await resolveIdentityPhone({
         isGroup: true,
+        senderId: "11085394505852@lid",
         senderPhone: "11085394505852",
         groupDefaultUserPhone: "55 44 98924-520"
       })
     ).toBe("554498924520");
   });
 
-  it("usa o remetente para mensagens privadas", () => {
+  it("usa o remetente para mensagens privadas", async () => {
     expect(
-      resolveIdentityPhone({
+      await resolveIdentityPhone({
         isGroup: false,
+        senderId: "5544998581299@c.us",
         senderPhone: "5544998581299",
         groupDefaultUserPhone: "554498924520"
       })
     ).toBe("5544998581299");
+  });
+
+  it("resolve lid para telefone antes de validar usuario", async () => {
+    expect(
+      await resolveIdentityPhone({
+        isGroup: false,
+        senderId: "175934812471538@lid",
+        senderPhone: "175934812471538",
+        resolveLidPhone: async (lid) =>
+          lid === "175934812471538@lid" ? "554488684248" : null
+      })
+    ).toBe("554488684248");
+  });
+
+  it("usa o senderPhone se o lid nao resolver", async () => {
+    expect(
+      await resolveIdentityPhone({
+        isGroup: false,
+        senderId: "999@lid",
+        senderPhone: "999",
+        resolveLidPhone: async () => null
+      })
+    ).toBe("999");
   });
 });

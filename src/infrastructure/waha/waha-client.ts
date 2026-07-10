@@ -25,4 +25,56 @@ export class WahaClient implements WhatsAppGateway {
     }
   }
 
+  async resolveLidPhone(lid: string): Promise<string | null> {
+    const response = await fetch(
+      `${env.WAHA_BASE_URL}/api/${encodeURIComponent(env.WAHA_SESSION)}/lids/${encodeURIComponent(lid)}`,
+      {
+        method: "GET",
+        headers: {
+          ...(env.WAHA_API_KEY ? { "X-Api-Key": env.WAHA_API_KEY } : {})
+        }
+      }
+    );
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`WAHA lid lookup failed with status ${response.status}`);
+    }
+
+    const payload = (await response.json()) as unknown;
+    const phone = extractPhoneFromLidLookup(payload);
+    return phone ? normalizePhone(phone) : null;
+  }
+}
+
+function extractPhoneFromLidLookup(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  return firstString(payload.pn, payload.phone, payload.phoneNumber, payload.number);
+}
+
+function normalizePhone(raw: string): string {
+  return raw
+    .replace(/@c\.us$/, "")
+    .replace(/@s\.whatsapp\.net$/, "")
+    .replace(/\D/g, "");
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

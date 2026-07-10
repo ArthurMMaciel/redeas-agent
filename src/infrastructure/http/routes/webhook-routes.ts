@@ -34,6 +34,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         {
           channel: "whatsapp",
           conversationId: message.chatId,
+          senderId: message.senderId,
           senderPhone: message.senderPhone,
           isGroup: message.isGroup,
           fromMe: message.fromMe,
@@ -50,6 +51,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         {
           channel: "whatsapp",
           groupId: message.chatId,
+          senderId: message.senderId,
           senderPhone: message.senderPhone,
           fromMe: message.fromMe,
           messageId: message.providerMessageId
@@ -59,16 +61,20 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       return reply.code(202).send({ accepted: false, reason: "group_not_allowed" });
     }
 
-    const identityPhone = resolveIdentityPhone({
+    const currentContainer = getContainer();
+    const identityPhone = await resolveIdentityPhone({
       isGroup: message.isGroup,
+      senderId: message.senderId,
       senderPhone: message.senderPhone,
-      groupDefaultUserPhone: env.WAHA_GROUP_DEFAULT_USER_PHONE ?? null
+      groupDefaultUserPhone: env.WAHA_GROUP_DEFAULT_USER_PHONE ?? null,
+      resolveLidPhone: (lid) => currentContainer.whatsApp.resolveLidPhone(lid)
     });
 
     request.log.info(
       {
         channel: "whatsapp",
         conversationId: message.chatId,
+        senderId: message.senderId,
         senderPhone: message.senderPhone,
         identityPhone,
         isGroup: message.isGroup,
@@ -78,7 +84,6 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       "Processing WAHA message"
     );
 
-    const currentContainer = getContainer();
     const result = await currentContainer.messageProcessor.process({
       channel: "whatsapp",
       conversationId: message.chatId,
@@ -104,6 +109,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       {
         channel: "whatsapp",
         conversationId: message.chatId,
+        senderId: message.senderId,
         senderPhone: message.senderPhone,
         identityPhone,
         isGroup: message.isGroup,
@@ -128,16 +134,26 @@ export function extractRedeasCommand(text: string): string | null {
   return match?.[1]?.trim() || null;
 }
 
-export function resolveIdentityPhone(input: {
+export async function resolveIdentityPhone(input: {
   isGroup: boolean;
+  senderId: string;
   senderPhone: string;
   groupDefaultUserPhone?: string | null;
-}): string {
+  resolveLidPhone?: (lid: string) => Promise<string | null>;
+}): Promise<string> {
   if (input.isGroup && input.groupDefaultUserPhone?.trim()) {
     return input.groupDefaultUserPhone.replace(/\D/g, "");
   }
 
+  if (isLidId(input.senderId) && input.resolveLidPhone) {
+    return (await input.resolveLidPhone(input.senderId)) ?? input.senderPhone;
+  }
+
   return input.senderPhone;
+}
+
+function isLidId(value: string): boolean {
+  return value.endsWith("@lid");
 }
 
 function isAllowedGroup(groupId: string): boolean {

@@ -33,18 +33,18 @@ export function extractWahaMessage(
   }
 
   const text = firstString(payload.body, payload.text, payload.message, payload.caption);
-  const senderPhone = isGroup
+  const rawSenderId = isGroup
     ? fromMe
-      ? normalizePhone(options.ownPhone ?? null)
-      : normalizePhone(
-          firstString(
-            payload.sender,
-            payload.participant,
-            payload.author,
-            nestedString(payload.key, "participant")
-          )
+      ? options.ownPhone ?? null
+      : firstString(
+          payload.sender,
+          payload.participant,
+          payload.author,
+          nestedString(payload.key, "participant")
         )
-    : normalizePhone(rawChatId);
+    : rawChatId;
+  const senderId = normalizeWhatsAppId(rawSenderId);
+  const senderPhone = normalizePhone(rawSenderId);
   if (!text || !chatId || !senderPhone || !providerMessageId) {
     return null;
   }
@@ -53,6 +53,7 @@ export function extractWahaMessage(
     providerMessageId,
     phone: senderPhone,
     chatId,
+    senderId: senderId ?? senderPhone,
     senderPhone,
     isGroup,
     fromMe,

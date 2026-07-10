@@ -2,6 +2,7 @@ export interface IncomingWhatsAppMessage {
   providerMessageId: string;
   phone: string;
   chatId: string;
+  senderId: string;
   senderPhone: string;
   isGroup: boolean;
   fromMe: boolean;

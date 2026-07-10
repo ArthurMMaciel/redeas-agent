@@ -15,6 +15,7 @@ describe("extractWahaMessage", () => {
     expect(message).toMatchObject({
       providerMessageId: "msg-1",
       chatId: "554399509467@c.us",
+      senderId: "554399509467@c.us",
       senderPhone: "554399509467",
       phone: "554399509467",
       isGroup: false,
@@ -36,6 +37,7 @@ describe("extractWahaMessage", () => {
     expect(message).toMatchObject({
       providerMessageId: "msg-2",
       chatId: "120363999999999999@g.us",
+      senderId: "554497033921@c.us",
       senderPhone: "554497033921",
       phone: "554497033921",
       isGroup: true,
@@ -75,6 +77,7 @@ describe("extractWahaMessage", () => {
     expect(message).toMatchObject({
       providerMessageId: "msg-4",
       chatId: "120363999999999999@g.us",
+      senderId: "554498924520",
       senderPhone: "554498924520",
       phone: "554498924520",
       isGroup: true
@@ -99,9 +102,28 @@ describe("extractWahaMessage", () => {
 
     expect(message).toMatchObject({
       chatId: "120363423533383999@g.us",
+      senderId: "554498924520",
       senderPhone: "554498924520",
       isGroup: true,
       fromMe: true
+    });
+  });
+
+  it("preserva o lid do remetente para resolucao posterior", () => {
+    const message = extractWahaMessage({
+      payload: {
+        id: "false_120363422092127850@g.us_ABCDEF_175934812471538@lid",
+        chatId: "120363422092127850@g.us",
+        author: "175934812471538@lid",
+        body: "redeas gastei 50 com combustivel"
+      }
+    });
+
+    expect(message).toMatchObject({
+      chatId: "120363422092127850@g.us",
+      senderId: "175934812471538@lid",
+      senderPhone: "175934812471538",
+      isGroup: true
     });
   });
 });
