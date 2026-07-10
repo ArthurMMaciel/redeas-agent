@@ -54,6 +54,7 @@ export function extractWahaMessage(
     chatId,
     senderPhone,
     isGroup,
+    fromMe,
     text,
     receivedAt: parseTimestamp(payload.timestamp) ?? new Date()
   };

@@ -4,6 +4,7 @@ export interface IncomingWhatsAppMessage {
   chatId: string;
   senderPhone: string;
   isGroup: boolean;
+  fromMe: boolean;
   text: string;
   receivedAt: Date;
 }

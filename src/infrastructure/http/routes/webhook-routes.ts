@@ -17,16 +17,26 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       ownPhone: env.WAHA_OWN_PHONE ?? null
     });
     if (!message) {
-      request.log.debug("Ignored invalid or outbound WAHA message");
+      request.log.info(
+        {
+          waha: summarizeWahaPayload(request.body),
+          processGroupFromMe: env.WAHA_PROCESS_GROUP_FROM_ME,
+          ownPhoneConfigured: Boolean(env.WAHA_OWN_PHONE)
+        },
+        "Ignored invalid or outbound WAHA message"
+      );
       return reply.code(202).send({ accepted: false, reason: "ignored_or_invalid_message" });
     }
 
     const commandText = extractRedeasCommand(message.text);
     if (!commandText) {
-      request.log.debug(
+      request.log.info(
         {
           channel: "whatsapp",
-          conversationId: message.phone,
+          conversationId: message.chatId,
+          senderPhone: message.senderPhone,
+          isGroup: message.isGroup,
+          fromMe: message.fromMe,
           messageId: message.providerMessageId
         },
         "Ignored WAHA message without Redeas prefix"
@@ -40,6 +50,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
           channel: "whatsapp",
           groupId: message.chatId,
           senderPhone: message.senderPhone,
+          fromMe: message.fromMe,
           messageId: message.providerMessageId
         },
         "Ignored WAHA group message from unallowed group"
@@ -53,6 +64,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         conversationId: message.chatId,
         senderPhone: message.senderPhone,
         isGroup: message.isGroup,
+        fromMe: message.fromMe,
         messageId: message.providerMessageId
       },
       "Processing WAHA message"
@@ -86,6 +98,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         conversationId: message.chatId,
         senderPhone: message.senderPhone,
         isGroup: message.isGroup,
+        fromMe: message.fromMe,
         messageId: message.providerMessageId,
         duplicate: result.response.metadata.duplicate
       },
@@ -112,4 +125,36 @@ function isAllowedGroup(groupId: string): boolean {
     .filter(Boolean);
 
   return !allowedGroups?.length || allowedGroups.includes(groupId);
+}
+
+function summarizeWahaPayload(body: unknown): Record<string, unknown> | null {
+  if (!isRecord(body)) {
+    return null;
+  }
+
+  const payload = isRecord(body.payload) ? body.payload : body;
+  const key = isRecord(payload.key) ? payload.key : {};
+
+  return {
+    event: firstString(body.event, payload.event),
+    id: firstString(payload.id, payload.messageId, payload.message_id, body.id),
+    chatId: firstString(payload.chatId, payload.chat_id, payload.from, key.remoteJid),
+    sender: firstString(payload.sender, payload.participant, payload.author, key.participant),
+    fromMe: Boolean(payload.fromMe ?? payload.from_me ?? key.fromMe),
+    hasText: Boolean(firstString(payload.body, payload.text, payload.message, payload.caption))
+  };
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
