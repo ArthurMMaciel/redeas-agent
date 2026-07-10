@@ -17,6 +17,19 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       return reply.code(202).send({ accepted: false, reason: "ignored_or_invalid_message" });
     }
 
+    const commandText = extractRedeasCommand(message.text);
+    if (!commandText) {
+      request.log.debug(
+        {
+          channel: "whatsapp",
+          conversationId: message.phone,
+          messageId: message.providerMessageId
+        },
+        "Ignored WAHA message without Redeas prefix"
+      );
+      return reply.code(202).send({ accepted: false, reason: "missing_redeas_prefix" });
+    }
+
     request.log.info(
       {
         channel: "whatsapp",
@@ -34,7 +47,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         id: message.providerMessageId,
         timestamp: message.receivedAt.toISOString(),
         type: "text",
-        content: message.text
+        content: commandText
       },
       identity: {
         phone: message.phone
@@ -65,4 +78,9 @@ export function registerWebhookRoutes(app: FastifyInstance) {
     const result = await getContainer().processPaymentWebhook.execute(request.body);
     return reply.code(result.accepted ? 202 : 400).send(result);
   });
+}
+
+export function extractRedeasCommand(text: string): string | null {
+  const match = text.trim().match(/^redeas(?:\s+|[:,.-]\s*)(.+)$/i);
+  return match?.[1]?.trim() || null;
 }
