@@ -1,17 +1,19 @@
 import type { IncomingWhatsAppMessage } from "../../application/ports/messaging.js";
 
-export function extractWahaMessage(body: unknown): IncomingWhatsAppMessage | null {
+interface ExtractWahaMessageOptions {
+  processGroupFromMe?: boolean;
+  ownPhone?: string | null;
+}
+
+export function extractWahaMessage(
+  body: unknown,
+  options: ExtractWahaMessageOptions = {}
+): IncomingWhatsAppMessage | null {
   if (!isRecord(body)) {
     return null;
   }
 
   const payload = isRecord(body.payload) ? body.payload : body;
-  const fromMe = Boolean(payload.fromMe ?? payload.from_me);
-  if (fromMe) {
-    return null;
-  }
-
-  const text = firstString(payload.body, payload.text, payload.message, payload.caption);
   const rawChatId = firstString(
     payload.chatId,
     payload.chat_id,
@@ -20,15 +22,23 @@ export function extractWahaMessage(body: unknown): IncomingWhatsAppMessage | nul
   );
   const chatId = normalizeWhatsAppId(rawChatId);
   const isGroup = Boolean(rawChatId?.includes("@g.us") || chatId?.endsWith("@g.us"));
+  const fromMe = Boolean(payload.fromMe ?? payload.from_me ?? nestedBoolean(payload.key, "fromMe"));
+  if (fromMe && (!isGroup || !options.processGroupFromMe)) {
+    return null;
+  }
+
+  const text = firstString(payload.body, payload.text, payload.message, payload.caption);
   const senderPhone = isGroup
-    ? normalizePhone(
-        firstString(
-          payload.sender,
-          payload.participant,
-          payload.author,
-          nestedString(payload.key, "participant")
+    ? fromMe
+      ? normalizePhone(options.ownPhone ?? null)
+      : normalizePhone(
+          firstString(
+            payload.sender,
+            payload.participant,
+            payload.author,
+            nestedString(payload.key, "participant")
+          )
         )
-      )
     : normalizePhone(rawChatId);
   const providerMessageId =
     firstString(payload.id, payload.messageId, payload.message_id, nestedString(payload.key, "id")) ??
@@ -101,4 +111,12 @@ function nestedString(value: unknown, key: string): string | null {
   }
 
   return firstString(value[key]);
+}
+
+function nestedBoolean(value: unknown, key: string): boolean | null {
+  if (!isRecord(value) || typeof value[key] !== "boolean") {
+    return null;
+  }
+
+  return value[key];
 }

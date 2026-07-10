@@ -12,7 +12,10 @@ function getContainer() {
 
 export function registerWebhookRoutes(app: FastifyInstance) {
   app.post("/webhooks/waha", async (request, reply) => {
-    const message = extractWahaMessage(request.body);
+    const message = extractWahaMessage(request.body, {
+      processGroupFromMe: env.WAHA_PROCESS_GROUP_FROM_ME,
+      ownPhone: env.WAHA_OWN_PHONE ?? null
+    });
     if (!message) {
       request.log.debug("Ignored invalid or outbound WAHA message");
       return reply.code(202).send({ accepted: false, reason: "ignored_or_invalid_message" });

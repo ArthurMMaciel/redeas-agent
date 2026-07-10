@@ -42,4 +42,42 @@ describe("extractWahaMessage", () => {
       text: "redeas recebi 50 reais da plantacao"
     });
   });
+
+  it("ignora mensagens fromMe por padrao", () => {
+    const message = extractWahaMessage({
+      payload: {
+        id: "msg-3",
+        chatId: "120363999999999999@g.us",
+        fromMe: true,
+        body: "redeas gastei 50 com combustivel"
+      }
+    });
+
+    expect(message).toBeNull();
+  });
+
+  it("processa mensagens fromMe em grupo quando habilitado explicitamente", () => {
+    const message = extractWahaMessage(
+      {
+        payload: {
+          id: "msg-4",
+          chatId: "120363999999999999@g.us",
+          fromMe: true,
+          body: "redeas gastei 50 com combustivel"
+        }
+      },
+      {
+        processGroupFromMe: true,
+        ownPhone: "554498924520"
+      }
+    );
+
+    expect(message).toMatchObject({
+      providerMessageId: "msg-4",
+      chatId: "120363999999999999@g.us",
+      senderPhone: "554498924520",
+      phone: "554498924520",
+      isGroup: true
+    });
+  });
 });
