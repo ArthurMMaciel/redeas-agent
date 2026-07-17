@@ -199,7 +199,11 @@ export function resolveReplyChatId(input: {
   chatId: string;
   identityPhone: string;
 }): string {
-  return input.chatId;
+  if (input.isGroup || !isLidId(input.chatId)) {
+    return input.chatId;
+  }
+
+  return `${input.identityPhone.replace(/\D/g, "")}@c.us`;
 }
 
 function isLidId(value: string): boolean {

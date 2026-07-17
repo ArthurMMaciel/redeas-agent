@@ -86,13 +86,13 @@ describe("resolveReplyChatId", () => {
     ).toBe("554488684248@c.us");
   });
 
-  it("responde no chat recebido quando a mensagem privada veio como lid", () => {
+  it("responde no telefone resolvido quando a mensagem privada veio como lid", () => {
     expect(
       resolveReplyChatId({
         isGroup: false,
         chatId: "15595126939882@lid",
         identityPhone: "554498924520"
       })
-    ).toBe("15595126939882@lid");
+    ).toBe("554498924520@c.us");
   });
 });
