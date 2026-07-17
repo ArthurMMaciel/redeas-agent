@@ -98,9 +98,12 @@ describe("ProcessPaymentWebhookUseCase", () => {
     const whatsApp: WhatsAppGateway = {
       sendText: vi.fn().mockResolvedValue({
         status: 200,
+        statusText: "OK",
         requestedChatId: user.phone,
         resolvedChatId: user.phone,
-        body: null
+        body: null,
+        bodyLength: 0,
+        headers: {}
       })
     };
 

@@ -4,7 +4,15 @@ import type { WhatsAppGateway, WhatsAppSendResult } from "../../application/port
 export class WahaClient implements WhatsAppGateway {
   async sendText(input: { phone: string; text: string }): Promise<WhatsAppSendResult> {
     if (env.WAHA_DRY_RUN) {
-      return { status: 200, requestedChatId: input.phone, resolvedChatId: input.phone, body: null };
+      return {
+        status: 200,
+        statusText: "DRY_RUN",
+        requestedChatId: input.phone,
+        resolvedChatId: input.phone,
+        body: null,
+        bodyLength: 0,
+        headers: {}
+      };
     }
 
     const chatId = await this.resolveSendChatId(input.phone);
@@ -20,16 +28,21 @@ export class WahaClient implements WhatsAppGateway {
         text: input.text
       })
     });
+    const responseBody = await response.text();
+    const responseHeaders = Object.fromEntries(response.headers.entries());
 
     if (!response.ok) {
-      throw new Error(`WAHA sendText failed with status ${response.status}: ${await response.text()}`);
+      throw new Error(`WAHA sendText failed with status ${response.status}: ${responseBody}`);
     }
 
     return {
       status: response.status,
+      statusText: response.statusText,
       requestedChatId: input.phone,
       resolvedChatId: chatId,
-      body: await response.text()
+      body: responseBody,
+      bodyLength: responseBody.length,
+      headers: responseHeaders
     };
   }
 

@@ -16,9 +16,12 @@ export interface WhatsAppGateway {
 
 export interface WhatsAppSendResult {
   status: number;
+  statusText: string;
   requestedChatId: string;
   resolvedChatId: string;
   body: string | null;
+  bodyLength: number;
+  headers: Record<string, string>;
 }
 
 export interface ProcessedMessageRepository {

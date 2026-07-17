@@ -117,6 +117,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         {
           channel: "whatsapp",
           endpoint: "/api/sendText",
+          method: "POST",
           payload: sendPayload,
           textPreview: preview(result.response.message)
         },
@@ -132,12 +133,17 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         {
           channel: "whatsapp",
           endpoint: "/api/sendText",
+          method: "POST",
           session: env.WAHA_SESSION,
           chatId: replyChatId,
           status: sendResult.status,
+          statusText: sendResult.statusText,
           requestedChatId: sendResult.requestedChatId,
           resolvedChatId: sendResult.resolvedChatId,
-          bodyPreview: sendResult.body ? preview(sendResult.body) : null
+          responseHeaders: sendResult.headers,
+          body: sendResult.body,
+          bodyLength: sendResult.bodyLength,
+          bodyPreview: sendResult.body === null ? null : preview(sendResult.body)
         },
         "WAHA text message sent"
       );
