@@ -102,6 +102,38 @@ describe("MessageProcessorService", () => {
     expect(result.response.metadata.duplicate).toBe(true);
   });
 
+  it("bloqueia processamento simultaneo da mesma mensagem", async () => {
+    const dependencies = createDependencies();
+    let releaseWasProcessed: () => void = () => undefined;
+    vi.mocked(dependencies.processedMessages.wasProcessed).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseWasProcessed = () => resolve(false);
+        })
+    );
+    const service = new MessageProcessorService(
+      dependencies.users,
+      dependencies.farms,
+      dependencies.processedMessages,
+      dependencies.createTransaction as never
+    );
+
+    const first = service.process({
+      ...input,
+      message: { ...input.message, id: "msg-concurrent" }
+    });
+    const second = await service.process({
+      ...input,
+      message: { ...input.message, id: "msg-concurrent" }
+    });
+
+    releaseWasProcessed();
+    await first;
+
+    expect(second.response.metadata.duplicate).toBe(true);
+    expect(dependencies.createTransaction.execute).toHaveBeenCalledOnce();
+  });
+
   it("aceita os tipos multimídia sem executar lançamento financeiro", async () => {
     const dependencies = createDependencies();
     const service = new MessageProcessorService(

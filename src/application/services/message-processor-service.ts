@@ -13,6 +13,8 @@ import {
 } from "../../shared/formatters.js";
 import type { UserId } from "../../shared/types.js";
 
+const inFlightMessages = new Set<string>();
+
 export class MessageProcessingError extends Error {
   constructor(
     readonly code: "user_not_found" | "missing_identity",
@@ -32,6 +34,7 @@ export class MessageProcessorService {
   ) {}
 
   async process(input: MessageProcessingInput): Promise<AgentResponseDTO> {
+    const messageKey = processedMessageKey(input.message.id, input.channel);
     const logContext = {
       channel: input.channel,
       conversationId: input.conversationId,
@@ -39,8 +42,18 @@ export class MessageProcessorService {
       userId: input.userId
     };
 
+    if (inFlightMessages.has(messageKey)) {
+      return this.response(input.conversationId, "Mensagem ja processada.", {
+        duplicate: true,
+        ...logContext
+      });
+    }
+
+    inFlightMessages.add(messageKey);
+
+    try {
     if (await this.processedMessages.wasProcessed(input.message.id, input.channel)) {
-      return this.response(input.conversationId, "Mensagem já processada.", {
+      return this.response(input.conversationId, "Mensagem ja processada.", {
         duplicate: true,
         ...logContext
       });
@@ -136,6 +149,9 @@ export class MessageProcessorService {
       ].join("\n"),
       { userId: user.id, farmId: farm.id }
     );
+    } finally {
+      inFlightMessages.delete(messageKey);
+    }
   }
 
   private async finish(
@@ -167,6 +183,10 @@ export class MessageProcessorService {
       }
     };
   }
+}
+
+function processedMessageKey(messageId: string, channel: string): string {
+  return `${channel}:${messageId}`;
 }
 
 function buildTransactionConfirmation(

@@ -107,12 +107,17 @@ export function registerWebhookRoutes(app: FastifyInstance) {
 
     let sendResult: WhatsAppSendResult | null = null;
     if (result.response.metadata.duplicate !== true) {
+      const sendPayload = {
+        session: env.WAHA_SESSION,
+        chatId: replyChatId,
+        text: result.response.message
+      };
+
       request.log.info(
         {
           channel: "whatsapp",
           endpoint: "/api/sendText",
-          session: env.WAHA_SESSION,
-          chatId: replyChatId,
+          payload: sendPayload,
           textPreview: preview(result.response.message)
         },
         "Sending WAHA text message"
@@ -194,11 +199,7 @@ export function resolveReplyChatId(input: {
   chatId: string;
   identityPhone: string;
 }): string {
-  if (input.isGroup) {
-    return input.chatId;
-  }
-
-  return `${input.identityPhone.replace(/\D/g, "")}@c.us`;
+  return input.chatId;
 }
 
 function isLidId(value: string): boolean {
