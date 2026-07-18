@@ -1,6 +1,22 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const booleanFromEnv = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (["true", "1", "yes", "y", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["false", "0", "no", "n", "off", ""].includes(normalized)) {
+    return false;
+  }
+
+  return value;
+}, z.boolean());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -13,10 +29,10 @@ const envSchema = z.object({
   WAHA_BASE_URL: z.string().url().default("http://localhost:3001"),
   WAHA_API_KEY: z.string().optional(),
   WAHA_SESSION: z.string().default("default"),
-  WAHA_DRY_RUN: z.coerce.boolean().default(false),
+  WAHA_DRY_RUN: booleanFromEnv.default(false),
   WAHA_ALLOWED_GROUP_IDS: z.string().optional(),
   WAHA_GROUP_DEFAULT_USER_PHONE: z.string().optional(),
-  WAHA_PROCESS_GROUP_FROM_ME: z.coerce.boolean().default(false),
+  WAHA_PROCESS_GROUP_FROM_ME: booleanFromEnv.default(false),
   WAHA_OWN_PHONE: z.string().optional(),
   PAYMENT_PROVIDER: z.string().default("pagarme"),
   PAGARME_API_KEY: z.string().optional(),
