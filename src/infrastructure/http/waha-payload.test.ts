@@ -109,6 +109,24 @@ describe("extractWahaMessage", () => {
     });
   });
 
+  it("recupera grupo legado com hifen pelo id da mensagem", () => {
+    const message = extractWahaMessage({
+      payload: {
+        id: "false_554499307273-1399939144@g.us_3ABE4449C8988953366C_85409719709700@lid",
+        chatId: "85409719709700@lid",
+        author: "85409719709700@lid",
+        body: "redeas gastei 50 com combustivel"
+      }
+    });
+
+    expect(message).toMatchObject({
+      chatId: "554499307273-1399939144@g.us",
+      senderId: "85409719709700@lid",
+      senderPhone: "85409719709700",
+      isGroup: true
+    });
+  });
+
   it("preserva o lid do remetente para resolucao posterior", () => {
     const message = extractWahaMessage({
       payload: {

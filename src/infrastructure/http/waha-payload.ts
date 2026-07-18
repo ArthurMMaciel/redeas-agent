@@ -82,7 +82,7 @@ function normalizePhone(raw: string | null): string | null {
 }
 
 function extractGroupId(value: string | null): string | null {
-  return value?.match(/\d+@g\.us/)?.[0] ?? null;
+  return value?.match(/[\d-]+@g\.us/)?.[0] ?? null;
 }
 
 function parseTimestamp(raw: unknown): Date | null {
