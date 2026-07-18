@@ -11,10 +11,27 @@ describe("extractRedeasCommand", () => {
     );
   });
 
+  it("aceita variacoes de maiusculas e acentos na primeira palavra", () => {
+    expect(extractRedeasCommand("Rédeas gastei R$ 50 em diesel")).toBe(
+      "gastei R$ 50 em diesel"
+    );
+    expect(extractRedeasCommand("rédeas: gastei R$ 50 em diesel")).toBe(
+      "gastei R$ 50 em diesel"
+    );
+    expect(extractRedeasCommand("REDEAS gastei R$ 50 em diesel")).toBe(
+      "gastei R$ 50 em diesel"
+    );
+    expect(extractRedeasCommand("REDeas, gastei R$ 50 em diesel")).toBe(
+      "gastei R$ 50 em diesel"
+    );
+  });
+
   it("ignora mensagens sem o prefixo redeas", () => {
     expect(extractRedeasCommand("gastei R$ 50 em diesel")).toBeNull();
     expect(extractRedeasCommand("oi redeas gastei R$ 50")).toBeNull();
+    expect(extractRedeasCommand("oi Rédeas gastei R$ 50")).toBeNull();
     expect(extractRedeasCommand("redeas")).toBeNull();
+    expect(extractRedeasCommand("Rédeas")).toBeNull();
   });
 });
 

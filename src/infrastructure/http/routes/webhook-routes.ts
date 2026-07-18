@@ -178,8 +178,15 @@ export function registerWebhookRoutes(app: FastifyInstance) {
 }
 
 export function extractRedeasCommand(text: string): string | null {
-  const match = text.trim().match(/^redeas(?:\s+|[:,.-]\s*)(.+)$/i);
-  return match?.[1]?.trim() || null;
+  const trimmed = text.trim();
+  const match = trimmed.match(/^([^\s:,.-]+)(?:\s+|[:,.-]\s*)(.+)$/);
+  const prefix = match?.[1];
+  const command = match?.[2];
+  if (!prefix || !command || normalizeCommandPrefix(prefix) !== "redeas") {
+    return null;
+  }
+
+  return command.trim() || null;
 }
 
 export async function resolveIdentityPhone(input: {
@@ -214,6 +221,13 @@ export function resolveReplyChatId(input: {
 
 function isLidId(value: string): boolean {
   return value.endsWith("@lid");
+}
+
+function normalizeCommandPrefix(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 function isAllowedGroup(groupId: string): boolean {
