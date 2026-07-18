@@ -176,4 +176,60 @@ describe("MessageProcessorService", () => {
 
     expect(dependencies.users.findByPhone).toHaveBeenCalledWith(user.phone);
   });
+
+  it("responde com link da landing quando o WhatsApp nao encontra cliente", async () => {
+    const dependencies = createDependencies();
+    vi.mocked(dependencies.users.findByPhone).mockResolvedValue(null);
+    const service = new MessageProcessorService(
+      dependencies.users,
+      dependencies.farms,
+      dependencies.processedMessages
+    );
+
+    const result = await service.process({
+      channel: "whatsapp",
+      conversationId: "5544000000000@c.us",
+      identity: { phone: "5544000000000" },
+      message: {
+        ...input.message,
+        id: "waha-unknown",
+        content: "gastei R$ 50 em diesel"
+      }
+    });
+
+    expect(result.response.message).toBe(
+      "Percebi que você ainda não é um cliente Rédeas. Clique no link para saber mais: https://redeas.online/"
+    );
+    expect(dependencies.createTransaction.execute).not.toHaveBeenCalled();
+  });
+
+  it("responde com link da landing quando o cliente nao tem assinatura ativa", async () => {
+    const dependencies = createDependencies();
+    vi.mocked(dependencies.users.findByPhone).mockResolvedValue({
+      ...user,
+      subscriptionStatus: "free"
+    });
+    const service = new MessageProcessorService(
+      dependencies.users,
+      dependencies.farms,
+      dependencies.processedMessages
+    );
+
+    const result = await service.process({
+      channel: "whatsapp",
+      conversationId: user.phone,
+      identity: { phone: user.phone },
+      message: {
+        ...input.message,
+        id: "waha-free",
+        content: "gastei R$ 50 em diesel"
+      }
+    });
+
+    expect(result.response.message).toBe(
+      "Percebi que você ainda não é um cliente Rédeas. Clique no link para saber mais: https://redeas.online/"
+    );
+    expect(result.response.metadata.subscriptionStatus).toBe("free");
+    expect(dependencies.createTransaction.execute).not.toHaveBeenCalled();
+  });
 });

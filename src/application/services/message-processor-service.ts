@@ -70,10 +70,7 @@ export class MessageProcessorService {
       if (input.channel === "whatsapp") {
         return this.finish(
           input,
-          [
-            "Olá! Para ativar o Rédeas, faça seu cadastro e pagamento pela página oficial.",
-            "Depois da aprovação, eu libero seu atendimento por este número."
-          ].join("\n")
+          "Percebi que você ainda não é um cliente Rédeas. Clique no link para saber mais: https://redeas.online/"
         );
       }
 
@@ -90,10 +87,7 @@ export class MessageProcessorService {
     if (!["active", "trialing"].includes(user.subscriptionStatus)) {
       return this.finish(
         input,
-        [
-          "Seu acesso ao Rédeas ainda não está ativo.",
-          "Conclua o pagamento pela página oficial para liberar o atendimento por este número."
-        ].join("\n"),
+        "Percebi que você ainda não é um cliente Rédeas. Clique no link para saber mais: https://redeas.online/",
         { userId: user.id, subscriptionStatus: user.subscriptionStatus }
       );
     }
