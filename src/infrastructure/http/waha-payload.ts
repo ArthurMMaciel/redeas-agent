@@ -2,6 +2,7 @@ import type { IncomingWhatsAppMessage } from "../../application/ports/messaging.
 
 interface ExtractWahaMessageOptions {
   processGroupFromMe?: boolean;
+  processPrivateFromMe?: boolean;
   ownPhone?: string | null;
 }
 
@@ -28,7 +29,11 @@ export function extractWahaMessage(
   const chatId = normalizeWhatsAppId(rawChatId);
   const isGroup = Boolean(rawChatId?.includes("@g.us") || chatId?.endsWith("@g.us"));
   const fromMe = Boolean(payload.fromMe ?? payload.from_me ?? nestedBoolean(payload.key, "fromMe"));
-  if (fromMe && (!isGroup || !options.processGroupFromMe)) {
+  if (
+    fromMe &&
+    ((isGroup && !options.processGroupFromMe) ||
+      (!isGroup && !options.processPrivateFromMe))
+  ) {
     return null;
   }
 
@@ -42,7 +47,9 @@ export function extractWahaMessage(
           payload.author,
           nestedString(payload.key, "participant")
         )
-    : rawChatId;
+    : fromMe
+      ? options.ownPhone ?? rawChatId
+      : rawChatId;
   const senderId = normalizeWhatsAppId(rawSenderId);
   const senderPhone = normalizePhone(rawSenderId);
   if (!text || !chatId || !senderPhone || !providerMessageId) {

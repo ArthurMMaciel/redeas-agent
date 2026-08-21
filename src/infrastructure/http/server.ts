@@ -4,6 +4,7 @@ import { registerHealthRoutes } from "./routes/health-routes.js";
 import { registerFinanceRoutes } from "./routes/finance-routes.js";
 import { registerWebhookRoutes } from "./routes/webhook-routes.js";
 import { registerMessageRoutes } from "./routes/message-routes.js";
+import { registerWelcomeRoutes } from "./routes/welcome-routes.js";
 import { registerOpenApiRoutes } from "./routes/openapi-routes.js";
 import { registerCheckoutRoutes } from "./routes/checkout-routes.js";
 
@@ -14,6 +15,7 @@ export function buildServer() {
   registerFinanceRoutes(app);
   registerCheckoutRoutes(app);
   registerMessageRoutes(app);
+  registerWelcomeRoutes(app);
   registerWebhookRoutes(app);
   registerOpenApiRoutes(app);
 

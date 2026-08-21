@@ -15,6 +15,7 @@ export function registerWebhookRoutes(app: FastifyInstance) {
   app.post("/webhooks/waha", async (request, reply) => {
     const message = extractWahaMessage(request.body, {
       processGroupFromMe: env.WAHA_PROCESS_GROUP_FROM_ME,
+      processPrivateFromMe: env.WAHA_PROCESS_PRIVATE_FROM_ME,
       ownPhone: env.WAHA_OWN_PHONE ?? null
     });
     if (!message) {
@@ -27,6 +28,36 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         "Ignored invalid or outbound WAHA message"
       );
       return reply.code(202).send({ accepted: false, reason: "ignored_or_invalid_message" });
+    }
+
+    const currentContainer = getContainer();
+    if (currentContainer.personalFinance.canHandle({
+      phone: message.senderPhone,
+      text: message.text
+    })) {
+      request.log.info(
+        {
+          channel: "whatsapp",
+          conversationId: message.chatId,
+          senderPhone: message.senderPhone,
+          messageId: message.providerMessageId
+        },
+        "Processing personal finance message"
+      );
+
+      const text = await currentContainer.personalFinance.process({
+        phone: message.senderPhone,
+        text: message.text,
+        messageId: message.providerMessageId,
+        receivedAt: message.receivedAt
+      });
+
+      await currentContainer.whatsApp.sendText({
+        phone: message.chatId,
+        text
+      });
+
+      return reply.code(202).send({ accepted: true, handler: "personal_finance" });
     }
 
     const commandText = extractRedeasCommand(message.text);
@@ -62,7 +93,6 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       return reply.code(202).send({ accepted: false, reason: "group_not_allowed" });
     }
 
-    const currentContainer = getContainer();
     const identityPhone = await resolveIdentityPhone({
       isGroup: message.isGroup,
       senderId: message.senderId,

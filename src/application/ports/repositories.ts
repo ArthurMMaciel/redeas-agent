@@ -43,6 +43,7 @@ export interface PlanRepository {
 }
 
 export interface SubscriptionRepository {
+  findActivePlanByUserId(userId: UserId): Promise<Plan | null>;
   createOrReplaceActive(input: {
     userId: UserId;
     planId: PlanId;

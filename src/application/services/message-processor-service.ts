@@ -2,8 +2,13 @@ import type {
   AgentResponseDTO,
   MessageProcessingInput
 } from "../dtos/message-dtos.js";
+import type { AgentAiClient } from "../ports/agent-ai.js";
 import type { ProcessedMessageRepository } from "../ports/messaging.js";
-import type { FarmRepository, UserRepository } from "../ports/repositories.js";
+import type {
+  FarmRepository,
+  SubscriptionRepository,
+  UserRepository
+} from "../ports/repositories.js";
 import { parseTransactionMessage } from "./financial-message-parser.js";
 import type { CreateTransactionUseCase } from "../use-cases/create-transaction.js";
 import {
@@ -30,7 +35,9 @@ export class MessageProcessorService {
     private readonly users: UserRepository,
     private readonly farms: FarmRepository,
     private readonly processedMessages: ProcessedMessageRepository,
-    private readonly createTransaction?: CreateTransactionUseCase
+    private readonly createTransaction?: CreateTransactionUseCase,
+    private readonly subscriptions?: SubscriptionRepository,
+    private readonly agentAi?: AgentAiClient
   ) {}
 
   async process(input: MessageProcessingInput): Promise<AgentResponseDTO> {
@@ -52,97 +59,116 @@ export class MessageProcessorService {
     inFlightMessages.add(messageKey);
 
     try {
-    if (await this.processedMessages.wasProcessed(input.message.id, input.channel)) {
-      return this.response(input.conversationId, "Mensagem ja processada.", {
-        duplicate: true,
-        ...logContext
-      });
-    }
+      if (await this.processedMessages.wasProcessed(input.message.id, input.channel)) {
+        return this.response(input.conversationId, "Mensagem ja processada.", {
+          duplicate: true,
+          ...logContext
+        });
+      }
 
-    const phone = input.identity?.phone;
-    const user = input.userId
-      ? await this.users.findById(input.userId as UserId)
-      : phone
-        ? await this.users.findByPhone(phone)
-        : null;
+      const phone = input.identity?.phone;
+      const user = input.userId
+        ? await this.users.findById(input.userId as UserId)
+        : phone
+          ? await this.users.findByPhone(phone)
+          : null;
 
-    if (!user) {
-      if (input.channel === "whatsapp") {
+      if (!user) {
+        if (input.channel === "whatsapp") {
+          return this.finish(
+            input,
+            "Percebi que você ainda não é um cliente Rédeas. Clique no link para saber mais: https://redeas.online/"
+          );
+        }
+
+        if (!input.userId && !phone) {
+          throw new MessageProcessingError(
+            "missing_identity",
+            "A mensagem não contém uma identidade de usuário válida."
+          );
+        }
+
+        throw new MessageProcessingError("user_not_found", "Usuário não encontrado.");
+      }
+
+      if (!["active", "trialing"].includes(user.subscriptionStatus)) {
         return this.finish(
           input,
-          "Percebi que você ainda não é um cliente Rédeas. Clique no link para saber mais: https://redeas.online/"
+          "Percebi que você ainda não é um cliente Rédeas. Clique no link para saber mais: https://redeas.online/",
+          { userId: user.id, subscriptionStatus: user.subscriptionStatus }
         );
       }
 
-      if (!input.userId && !phone) {
-        throw new MessageProcessingError(
-          "missing_identity",
-          "A mensagem não contém uma identidade de usuário válida."
+      const farm = await this.farms.findDefaultByUserId(user.id);
+      if (!farm) {
+        return this.finish(
+          input,
+          "Seu usuário existe, mas ainda falta cadastrar a fazenda.",
+          { userId: user.id }
         );
       }
 
-      throw new MessageProcessingError("user_not_found", "Usuário não encontrado.");
-    }
+      const plan = this.subscriptions
+        ? await this.subscriptions.findActivePlanByUserId(user.id)
+        : null;
 
-    if (!["active", "trialing"].includes(user.subscriptionStatus)) {
+      if (input.message.type !== "text") {
+        if (this.agentAi) {
+          return this.finish(
+            input,
+            await this.buildAiReply(input, { user, farm, plan }),
+            {
+              userId: user.id,
+              farmId: farm.id,
+              planCode: plan?.code ?? null,
+              processingStatus: "answered_by_ai"
+            }
+          );
+        }
+
+        return this.finish(
+          input,
+          `Mensagem do tipo "${input.message.type}" recebida. O conteúdo foi encaminhado para processamento.`,
+          {
+            userId: user.id,
+            farmId: farm.id,
+            processingStatus: "accepted"
+          }
+        );
+      }
+
+      const receivedAt = new Date(input.message.timestamp);
+      const parsedTransaction = parseTransactionMessage(input.message.content, receivedAt);
+      if (parsedTransaction && this.createTransaction) {
+        const result = await this.createTransaction.execute({
+          userId: user.id,
+          farmId: farm.id,
+          type: parsedTransaction.type,
+          amountCents: parsedTransaction.amountCents,
+          description: parsedTransaction.description,
+          category: parsedTransaction.category,
+          occurredOn: parsedTransaction.occurredOn,
+          paymentMethod: parsedTransaction.paymentMethod,
+          cardId: null
+        });
+
+        return this.finish(
+          input,
+          buildTransactionConfirmation(parsedTransaction, result.budgetStatus),
+          { userId: user.id, farmId: farm.id, planCode: plan?.code ?? null }
+        );
+      }
+
       return this.finish(
         input,
-        "Percebi que você ainda não é um cliente Rédeas. Clique no link para saber mais: https://redeas.online/",
-        { userId: user.id, subscriptionStatus: user.subscriptionStatus }
-      );
-    }
-
-    const farm = await this.farms.findDefaultByUserId(user.id);
-    if (!farm) {
-      return this.finish(
-        input,
-        "Seu usuário existe, mas ainda falta cadastrar a fazenda.",
-        { userId: user.id }
-      );
-    }
-
-    if (input.message.type !== "text") {
-      return this.finish(
-        input,
-        `Mensagem do tipo "${input.message.type}" recebida. O conteúdo foi encaminhado para processamento.`,
+        await this.buildAiReply(input, { user, farm, plan }),
         {
           userId: user.id,
           farmId: farm.id,
-          processingStatus: "accepted"
+          planCode: plan?.code ?? null,
+          processingStatus: this.agentAi ? "answered_by_ai" : "ai_unavailable"
         }
       );
-    }
-
-    const receivedAt = new Date(input.message.timestamp);
-    const parsedTransaction = parseTransactionMessage(input.message.content, receivedAt);
-    if (parsedTransaction && this.createTransaction) {
-      const result = await this.createTransaction.execute({
-        userId: user.id,
-        farmId: farm.id,
-        type: parsedTransaction.type,
-        amountCents: parsedTransaction.amountCents,
-        description: parsedTransaction.description,
-        category: parsedTransaction.category,
-        occurredOn: parsedTransaction.occurredOn,
-        paymentMethod: parsedTransaction.paymentMethod,
-        cardId: null
-      });
-
-      return this.finish(
-        input,
-        buildTransactionConfirmation(parsedTransaction, result.budgetStatus),
-        { userId: user.id, farmId: farm.id }
-      );
-    }
-
-    return this.finish(
-      input,
-      [
-        "Recebi sua mensagem, mas ainda não consegui transformá-la em lançamento.",
-        "Tente algo como: gastei R$ 500,00 em manutenção ou recebi R$ 12.000,00 da venda de milho."
-      ].join("\n"),
-      { userId: user.id, farmId: farm.id }
-    );
     } finally {
       inFlightMessages.delete(messageKey);
     }
@@ -176,6 +202,34 @@ export class MessageProcessorService {
         metadata
       }
     };
+  }
+
+  private async buildAiReply(
+    input: MessageProcessingInput,
+    context: Parameters<AgentAiClient["reply"]>[0]["context"]
+  ): Promise<string> {
+    if (!this.agentAi) {
+      return [
+        "Recebi sua mensagem.",
+        "No momento a IA não está configurada para responder mensagens livres."
+      ].join("\n");
+    }
+
+    try {
+      return await this.agentAi.reply({
+        message: {
+          type: input.message.type,
+          content: input.message.content,
+          timestamp: input.message.timestamp
+        },
+        context
+      });
+    } catch {
+      return [
+        "Recebi sua mensagem, mas não consegui gerar uma resposta agora.",
+        "Tente novamente em alguns instantes."
+      ].join("\n");
+    }
   }
 }
 

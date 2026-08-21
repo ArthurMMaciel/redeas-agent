@@ -93,6 +93,7 @@ describe("ProcessPaymentWebhookUseCase", () => {
       create: vi.fn().mockResolvedValue(farm)
     };
     const subscriptions: SubscriptionRepository = {
+      findActivePlanByUserId: vi.fn().mockResolvedValue(null),
       createOrReplaceActive: vi.fn().mockResolvedValue(undefined)
     };
     const whatsApp: WhatsAppGateway = {

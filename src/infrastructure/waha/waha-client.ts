@@ -15,7 +15,7 @@ export class WahaClient implements WhatsAppGateway {
       };
     }
 
-    const chatId = await this.resolveSendChatId(input.phone);
+    const chatId = await this.resolveSendChatId(toPrivateChatId(input.phone));
     const response = await fetch(`${env.WAHA_BASE_URL}/api/sendText`, {
       method: "POST",
       headers: {
@@ -114,6 +114,15 @@ function extractExistingChatId(payload: unknown): string | null {
 
 function isBrazilianPrivateChatId(chatId: string): boolean {
   return /^55\d+@c\.us$/.test(chatId);
+}
+
+export function toPrivateChatId(raw: string): string {
+  if (raw.includes("@")) {
+    return raw;
+  }
+
+  const phone = normalizePhone(raw);
+  return phone ? `${phone}@c.us` : raw;
 }
 
 function normalizePhone(raw: string): string {

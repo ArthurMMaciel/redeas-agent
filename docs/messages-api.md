@@ -70,3 +70,40 @@ O par `channel + message.id` é a chave de idempotência. Reenvios retornam suce
 
 - Swagger UI: `GET /docs`
 - OpenAPI 3.1: `GET /docs/openapi.json`
+
+## Mensagem de boas-vindas por WhatsApp
+
+Quando o front/outro backend confirmar o primeiro pagamento de uma pessoa, ele pode chamar
+o agente para enviar a mensagem inicial pelo WAHA sem receber a chave do WAHA.
+
+```http
+POST /api/v1/welcome-messages
+Content-Type: application/json
+Authorization: Bearer <AGENT_API_KEY>
+```
+
+Payload:
+
+```json
+{
+  "phone": "5544999999999"
+}
+```
+
+Tambem sao aceitos telefones brasileiros com mascara, como `(44) 99999-9999`.
+O backend normaliza para o `chatId` privado do WAHA e monta a mensagem padrao.
+
+Resposta esperada:
+
+```json
+{
+  "success": true,
+  "data": {
+    "messageSent": true,
+    "requestedPhone": "5544999999999",
+    "chatId": "5544999999999@c.us",
+    "resolvedChatId": "5544999999999@c.us",
+    "status": 201
+  }
+}
+```

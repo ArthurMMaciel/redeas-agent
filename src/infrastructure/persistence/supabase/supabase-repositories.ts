@@ -132,6 +132,21 @@ export class SupabasePlanRepository implements PlanRepository {
 export class SupabaseSubscriptionRepository implements SubscriptionRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
+  async findActivePlanByUserId(userId: UserId) {
+    const { data, error } = await this.supabase
+      .from("subscriptions")
+      .select("plans(*)")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    const plan = data?.plans;
+    return plan ? mapPlan(Array.isArray(plan) ? plan[0] : plan) : null;
+  }
+
   async createOrReplaceActive(input: {
     userId: UserId;
     planId: PlanId;

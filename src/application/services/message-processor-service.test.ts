@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Farm, User } from "../../domain/entities.js";
+import type { Farm, Plan, User } from "../../domain/entities.js";
+import type { AgentAiClient } from "../ports/agent-ai.js";
 import type { ProcessedMessageRepository } from "../ports/messaging.js";
-import type { FarmRepository, UserRepository } from "../ports/repositories.js";
+import type {
+  FarmRepository,
+  SubscriptionRepository,
+  UserRepository
+} from "../ports/repositories.js";
 import { MessageProcessorService } from "./message-processor-service.js";
 
 const user = {
@@ -25,6 +30,20 @@ const farm = {
   deletedAt: null
 } as Farm;
 
+const plan = {
+  id: "323e4567-e89b-12d3-a456-426614174000",
+  code: "finance_safra",
+  name: "Financeiro + Safra",
+  priceCents: 6500,
+  currency: "BRL",
+  dailyTransactionLimit: null,
+  activeCropPlanLimit: null,
+  canReceiveDailyReport: true,
+  hasFinancialControl: true,
+  hasAgenda: true,
+  hasCropPlanning: true
+} as Plan;
+
 function createDependencies() {
   const users: UserRepository = {
     findByPhone: vi.fn().mockResolvedValue(user),
@@ -43,8 +62,15 @@ function createDependencies() {
   const createTransaction = {
     execute: vi.fn().mockResolvedValue({ transaction: {}, budgetStatus: null })
   };
+  const subscriptions: SubscriptionRepository = {
+    findActivePlanByUserId: vi.fn().mockResolvedValue(plan),
+    createOrReplaceActive: vi.fn().mockResolvedValue(undefined)
+  };
+  const agentAi: AgentAiClient = {
+    reply: vi.fn().mockResolvedValue("Resposta da IA")
+  };
 
-  return { users, farms, processedMessages, createTransaction };
+  return { users, farms, processedMessages, createTransaction, subscriptions, agentAi };
 }
 
 const input = {
@@ -155,6 +181,42 @@ describe("MessageProcessorService", () => {
     );
   });
 
+  it("usa IA para responder mensagens de texto que nao viram lancamento", async () => {
+    const dependencies = createDependencies();
+    const service = new MessageProcessorService(
+      dependencies.users,
+      dependencies.farms,
+      dependencies.processedMessages,
+      dependencies.createTransaction as never,
+      dependencies.subscriptions,
+      dependencies.agentAi
+    );
+
+    const result = await service.process({
+      ...input,
+      message: {
+        ...input.message,
+        id: "msg-ai",
+        content: "como esta meu planejamento da safra?"
+      }
+    });
+
+    expect(dependencies.createTransaction.execute).not.toHaveBeenCalled();
+    expect(dependencies.subscriptions.findActivePlanByUserId).toHaveBeenCalledWith(user.id);
+    expect(dependencies.agentAi.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({
+          user,
+          farm,
+          plan
+        })
+      })
+    );
+    expect(result.response.message).toBe("Resposta da IA");
+    expect(result.response.metadata.processingStatus).toBe("answered_by_ai");
+    expect(result.response.metadata.planCode).toBe("finance_safra");
+  });
+
   it("resolve a identidade do WhatsApp por telefone", async () => {
     const dependencies = createDependencies();
     const service = new MessageProcessorService(
@@ -170,7 +232,7 @@ describe("MessageProcessorService", () => {
       message: {
         ...input.message,
         id: "waha-123",
-        content: "mensagem sem lançamento"
+        content: "mensagem sem lancamento"
       }
     });
 

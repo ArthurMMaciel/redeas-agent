@@ -18,6 +18,8 @@ import {
 import { WahaClient } from "../waha/waha-client.js";
 import { PagarmeGateway } from "../payments/pagarme-gateway.js";
 import { env } from "../config/env.js";
+import { OpenAiAgentClient } from "../openai/openai-agent-client.js";
+import { PersonalFinanceService } from "../personal-finance/personal-finance-service.js";
 
 export function buildContainer() {
   const supabase = createSupabaseClient();
@@ -33,6 +35,10 @@ export function buildContainer() {
   const whatsApp = new WahaClient();
   const payments = new PagarmeGateway();
   const clock = new SystemClock();
+  const personalFinance = new PersonalFinanceService();
+  const agentAi = env.OPENAI_API_KEY
+    ? new OpenAiAgentClient(env.OPENAI_API_KEY, env.OPENAI_MODEL)
+    : undefined;
   const createTransaction = new CreateTransactionUseCase(users, usage, transactions, cropPlans, clock);
   const createCheckout = new CreateCheckoutUseCase(plans, checkoutIntents, payments, env.APP_BASE_URL);
   const processPaymentWebhook = new ProcessPaymentWebhookUseCase(
@@ -49,10 +55,13 @@ export function buildContainer() {
       users,
       farms,
       processedMessages,
-      createTransaction
+      createTransaction,
+      subscriptions,
+      agentAi
     ),
     createCheckout,
     processPaymentWebhook,
+    personalFinance,
     whatsApp
   };
 }
