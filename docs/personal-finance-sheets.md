@@ -6,16 +6,28 @@ Fluxo:
 WhatsApp -> WAHA -> /webhooks/waha -> Google Sheets -> WhatsApp
 ```
 
-Mensagens devem comecar com `fin` e vir de um telefone permitido.
+Mensagens devem vir de um telefone permitido e começar exatamente com
+`fin-darithur`. O formato recomendado e multiline, sem uso de IA:
+
+```text
+fin-darithur
+Mercado
+85.90
+arroz e carne
+22/08/2026
+```
+
+As linhas depois do gatilho representam categoria, valor, descricao e data. A descricao pode ser
+omitida; nesse caso a API usa o nome da categoria.
 
 Exemplos:
 
 ```text
-fin mercado 85,90 arroz e carne
-fin gasolina 120 posto shell hoje
-fin lazer 45 cinema ontem
-fin banho sukita 70 banho do mes
-fin luz 210 pago 20/08
+fin-darithur
+Gasolina
+120
+posto shell
+22/08/2026
 ```
 
 Categorias aceitas:
@@ -97,6 +109,11 @@ No Google Cloud:
 4. Em `Chaves`, crie uma chave JSON.
 5. Guarde o JSON fora do Git na VPS.
 6. Compartilhe a planilha com o email `client_email` do JSON como Editor.
+
+Para encontrar o email da Service Account, abra o projeto no Google Cloud,
+acesse `IAM e administrador` -> `Contas de serviço`, abra a conta criada e copie
+o campo `Email`. Esse email e o que deve ser adicionado em `Compartilhar` na
+planilha, com permissao de Editor.
 
 Na VPS, sugestao:
 

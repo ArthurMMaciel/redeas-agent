@@ -63,6 +63,8 @@ const monthSheetNames = [
   "Dezembro"
 ] as const;
 
+const financeTrigger = "fin-darithur";
+
 interface PersonalFinanceMessage {
   phone: string;
   text: string;
@@ -93,7 +95,7 @@ export class PersonalFinanceService {
   private accessToken: { value: string; expiresAt: number } | null = null;
 
   canHandle(input: { phone: string; text: string }): boolean {
-    return this.isAllowedPhone(input.phone) && input.text.trim().toLowerCase().startsWith("fin ");
+    return this.isAllowedPhone(input.phone) && looksLikeFinanceCommand(input.text);
   }
 
   async process(input: PersonalFinanceMessage): Promise<string> {
@@ -296,17 +298,41 @@ export function parseFinanceCommand(
   rawText: string,
   now: Date = new Date()
 ): ParsedFinanceCommand | null {
-  const text = rawText.trim();
-  if (!text.toLowerCase().startsWith("fin ")) {
+  const lines = rawText
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) {
     return null;
   }
 
-  const body = text.slice(4).trim();
+  const firstLine = lines[0] ?? "";
+  const hasTrigger = normalizeText(firstLine) === financeTrigger;
+  const hasLegacyPrefix = normalizeText(firstLine).startsWith("fin ");
+  const body = hasTrigger ? lines[1] ?? "" : hasLegacyPrefix ? firstLine.slice(4).trim() : firstLine;
   const category = categories.find((item) =>
-    normalizeText(body).startsWith(normalizeText(item))
+    normalizeText(body) === normalizeText(item) ||
+      normalizeText(body).startsWith(`${normalizeText(item)} `)
   );
   if (!category) {
     return null;
+  }
+
+  if (hasTrigger) {
+    const amount = parseMoney(lines[2] ?? "");
+    if (!amount || amount <= 0) {
+      return null;
+    }
+
+    const description = lines[3] && !isDateText(lines[3]) ? lines[3] : categoryDisplayNames[category];
+    const dateText = lines[4] ?? (lines[3] && isDateText(lines[3]) ? lines[3] : "");
+    return {
+      category,
+      amount,
+      description,
+      date: dateText ? parseDateFromText(dateText, now) : now
+    };
   }
 
   const remainder = body.slice(category.length).trim();
@@ -330,6 +356,12 @@ export function parseFinanceCommand(
     description,
     date: parsedDate
   };
+}
+
+function looksLikeFinanceCommand(rawText: string): boolean {
+  const firstLine = rawText.replace(/\r/g, "").split("\n")[0]?.trim() ?? "";
+  const normalizedFirstLine = normalizeText(firstLine);
+  return normalizedFirstLine === financeTrigger;
 }
 
 export function normalizeBrazilianPhone(rawPhone: string): string {
@@ -364,10 +396,18 @@ function parseDateFromText(text: string, now: Date): Date {
     const day = Number(explicit[1]);
     const month = Number(explicit[2]) - 1;
     const year = explicit[3] ? normalizeYear(Number(explicit[3])) : now.getFullYear();
-    return new Date(year, month, day);
+    const result = new Date(year, month, day);
+    if (result.getFullYear() !== year || result.getMonth() !== month || result.getDate() !== day) {
+      return now;
+    }
+    return result;
   }
 
   return now;
+}
+
+function isDateText(text: string): boolean {
+  return /^\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?$/.test(text.trim());
 }
 
 function getMonthSheetName(date: Date): string {

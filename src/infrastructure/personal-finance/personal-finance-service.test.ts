@@ -36,6 +36,26 @@ describe("parseFinanceCommand", () => {
 
     expect(command?.date.toISOString().slice(0, 10)).toBe("2026-08-20");
   });
+
+  it("interpreta o formato multiline sem IA", () => {
+    const command = parseFinanceCommand(
+      "fin-darithur\nMercado\n85.90\narroz e carne\n22/08/2026",
+      new Date("2026-08-21T12:00:00-03:00")
+    );
+
+    expect(command).toMatchObject({
+      category: "Mercado",
+      amount: 85.9,
+      description: "arroz e carne"
+    });
+    expect(command?.date.toISOString().slice(0, 10)).toBe("2026-08-22");
+  });
+
+  it("aceita acentos nas categorias do WhatsApp", () => {
+    expect(parseFinanceCommand("fin-darithur\nCondomínio\n10\nmensal")?.category).toBe("Condominio");
+    expect(parseFinanceCommand("fin-darithur\nCartão\n10\ncompra")?.category).toBe("Cartao");
+    expect(parseFinanceCommand("fin-darithur\nSaúde\n10\nremédio")?.category).toBe("Saude");
+  });
 });
 
 describe("parseMoney", () => {

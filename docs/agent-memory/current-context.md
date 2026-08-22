@@ -1,6 +1,6 @@
 # Current Context
 
-Ultima atualizacao: 2026-08-20
+Ultima atualizacao: 2026-08-22
 
 ## Projeto
 
@@ -29,6 +29,8 @@ Ja existe uma base funcional com:
 - Em producao, `OPENAI_API_KEY` fica em `.env.production`; `AGENT_API_KEY` e uma chave interna separada e pode coexistir.
 - Endpoint interno `POST /api/v1/welcome-messages` envia mensagem de boas-vindas no WhatsApp para novo pagante. O front/outro backend passa apenas `phone` e autentica com `AGENT_API_KEY`; o agente monta a mensagem e usa WAHA internamente.
 - Integracao pessoal com Google Sheets adicionada ao webhook WAHA para mensagens com prefixo `fin`, limitada aos telefones configurados em `PERSONAL_FINANCE_ALLOWED_PHONES`. Ela registra historico na aba `Lancamentos` e soma direto na aba mensal.
+- Integracao pessoal com Google Sheets agora aceita no webhook WAHA o formato multiline sem IA iniciado por `fin-darithur` (`Categoria`, `Valor`, `Descricao`, `Data`).
+- O gatilho da planilha exige que a primeira linha seja exatamente `fin-darithur`; mensagens comuns nao entram no fluxo financeiro.
 - Prompt de IA contextualiza o Redeas como agente financeiro agro, com controle financeiro, agenda e planejamento condicionado ao plano do cliente.
 - Repositorio de assinaturas agora expoe o plano ativo do usuario para contextualizar recursos disponiveis.
 - Repositorios Supabase para usuarios, fazendas, transacoes, uso e planejamento.
@@ -54,6 +56,7 @@ Principio adotado:
 - Implementar planejamento de safra e itens de orcamento.
 - Gerar alertas persistidos em 50%, 80%, 100% e estouro.
 - Evoluir processamento com IA para saida estruturada validada por Zod antes de executar acoes financeiras alem do parser atual.
+- Confirmar na VPS o JSON da Service Account Google e as variaveis `PERSONAL_FINANCE_*`; nao versionar o JSON.
 - Implementar transcricao/OCR real de audio, fotos e documentos vindos do WAHA. Preferir bibliotecas TypeScript viaveis quando houver arquivo/midia acessivel; se nao atender qualidade/formatos, usar modelos de IA para transcricao e visao.
 - Definir estrategia de historico/avaliacao de agentes, possivelmente com Postgres + pgvector depois.
 
@@ -70,6 +73,8 @@ Principio adotado:
 - `npm.cmd run typecheck` -> passou apos integracao pessoal com Google Sheets.
 - `npm.cmd test` -> 52 testes passaram apos integracao pessoal com Google Sheets.
 - `npm.cmd run build` -> passou apos integracao pessoal com Google Sheets.
+- `npm.cmd run typecheck` -> passou apos suporte ao formato multiline da planilha.
+- `npm.cmd test -- --run` -> 54 testes passaram apos suporte ao formato multiline da planilha.
 
 ## Como Continuar em Novo Chat
 
