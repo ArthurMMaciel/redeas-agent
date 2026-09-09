@@ -94,8 +94,11 @@ interface GoogleToken {
 export class PersonalFinanceService {
   private accessToken: { value: string; expiresAt: number } | null = null;
 
-  canHandle(input: { phone: string; text: string }): boolean {
-    return this.isAllowedPhone(input.phone) && looksLikeFinanceCommand(input.text);
+  canHandle(input: { phone: string; text: string; senderId?: string }): boolean {
+    return (
+      (this.isAllowedPhone(input.phone) || this.isAllowedLid(input.senderId)) &&
+      looksLikeFinanceCommand(input.text)
+    );
   }
 
   async process(input: PersonalFinanceMessage): Promise<string> {
@@ -147,6 +150,21 @@ export class PersonalFinanceService {
     }
 
     return allowed.includes(normalizeBrazilianPhone(rawPhone));
+  }
+
+  private isAllowedLid(rawSenderId?: string): boolean {
+    if (!rawSenderId) {
+      return false;
+    }
+
+    const allowed = env.PERSONAL_FINANCE_ALLOWED_LIDS?.split(",")
+      .map((lid) => normalizeWhatsAppId(lid))
+      .filter(Boolean);
+    if (!allowed?.length) {
+      return false;
+    }
+
+    return allowed.includes(normalizeWhatsAppId(rawSenderId));
   }
 
   private async createSheetsClient(): Promise<GoogleSheetsClient> {
@@ -471,6 +489,10 @@ function normalizeText(value: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function normalizeWhatsAppId(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 function columnNameToIndex(column: string): number {

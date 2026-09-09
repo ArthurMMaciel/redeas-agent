@@ -31,29 +31,42 @@ export function registerWebhookRoutes(app: FastifyInstance) {
     }
 
     const currentContainer = getContainer();
+    const personalFinancePhone = await resolvePersonalFinancePhone({
+      senderId: message.senderId,
+      senderPhone: message.senderPhone,
+      resolveLidPhone: (lid) => currentContainer.whatsApp.resolveLidPhone(lid)
+    });
     if (currentContainer.personalFinance.canHandle({
-      phone: message.senderPhone,
+      phone: personalFinancePhone,
+      senderId: message.senderId,
       text: message.text
     })) {
+      const replyChatId = resolveReplyChatId({
+        isGroup: message.isGroup,
+        chatId: message.chatId,
+        identityPhone: personalFinancePhone
+      });
+
       request.log.info(
         {
           channel: "whatsapp",
           conversationId: message.chatId,
           senderPhone: message.senderPhone,
+          personalFinancePhone,
           messageId: message.providerMessageId
         },
         "Processing personal finance message"
       );
 
       const text = await currentContainer.personalFinance.process({
-        phone: message.senderPhone,
+        phone: personalFinancePhone,
         text: message.text,
         messageId: message.providerMessageId,
         receivedAt: message.receivedAt
       });
 
       await currentContainer.whatsApp.sendText({
-        phone: message.chatId,
+        phone: replyChatId,
         text
       });
 
@@ -237,6 +250,18 @@ export async function resolveIdentityPhone(input: {
   return input.senderPhone;
 }
 
+export async function resolvePersonalFinancePhone(input: {
+  senderId: string;
+  senderPhone: string;
+  resolveLidPhone?: (lid: string) => Promise<string | null>;
+}): Promise<string> {
+  if (isLidId(input.senderId) && input.resolveLidPhone) {
+    return (await input.resolveLidPhone(input.senderId)) ?? input.senderPhone;
+  }
+
+  return input.senderPhone;
+}
+
 export function resolveReplyChatId(input: {
   isGroup: boolean;
   chatId: string;
@@ -246,7 +271,15 @@ export function resolveReplyChatId(input: {
     return input.chatId;
   }
 
+  if (!isBrazilianPhone(input.identityPhone)) {
+    return input.chatId;
+  }
+
   return `${input.identityPhone.replace(/\D/g, "")}@c.us`;
+}
+
+function isBrazilianPhone(value: string): boolean {
+  return /^55\d{10,11}$/.test(value.replace(/\D/g, ""));
 }
 
 function isLidId(value: string): boolean {

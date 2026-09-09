@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { extractRedeasCommand, resolveIdentityPhone, resolveReplyChatId } from "./webhook-routes.js";
+import {
+  extractRedeasCommand,
+  resolveIdentityPhone,
+  resolvePersonalFinancePhone,
+  resolveReplyChatId
+} from "./webhook-routes.js";
 
 describe("extractRedeasCommand", () => {
   it("extrai o comando quando a mensagem comeca com redeas", () => {
@@ -111,5 +116,38 @@ describe("resolveReplyChatId", () => {
         identityPhone: "554498924520"
       })
     ).toBe("554498924520@c.us");
+  });
+
+  it("responde no proprio lid quando o telefone real nao foi resolvido", () => {
+    expect(
+      resolveReplyChatId({
+        isGroup: false,
+        chatId: "11085394505852@lid",
+        identityPhone: "11085394505852"
+      })
+    ).toBe("11085394505852@lid");
+  });
+});
+
+describe("resolvePersonalFinancePhone", () => {
+  it("resolve lid antes de validar telefone permitido na planilha", async () => {
+    expect(
+      await resolvePersonalFinancePhone({
+        senderId: "11085394505852@lid",
+        senderPhone: "11085394505852",
+        resolveLidPhone: async (lid) =>
+          lid === "11085394505852@lid" ? "5544998581299" : null
+      })
+    ).toBe("5544998581299");
+  });
+
+  it("mantem senderPhone quando lid nao resolve", async () => {
+    expect(
+      await resolvePersonalFinancePhone({
+        senderId: "11085394505852@lid",
+        senderPhone: "11085394505852",
+        resolveLidPhone: async () => null
+      })
+    ).toBe("11085394505852");
   });
 });

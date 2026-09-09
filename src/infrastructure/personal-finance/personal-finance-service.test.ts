@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  PersonalFinanceService,
   normalizeBrazilianPhone,
   parseFinanceCommand,
   parseMoney
 } from "./personal-finance-service.js";
+import { env } from "../config/env.js";
 
 describe("parseFinanceCommand", () => {
   it("interpreta categoria, valor e descricao", () => {
@@ -69,5 +71,28 @@ describe("parseMoney", () => {
 describe("normalizeBrazilianPhone", () => {
   it("adiciona DDI quando recebe DDD e numero", () => {
     expect(normalizeBrazilianPhone("44998924520")).toBe("5544998924520");
+  });
+});
+
+describe("PersonalFinanceService.canHandle", () => {
+  it("aceita remetente permitido por lid quando telefone real nao foi resolvido", () => {
+    const originalAllowedPhones = env.PERSONAL_FINANCE_ALLOWED_PHONES;
+    const originalAllowedLids = env.PERSONAL_FINANCE_ALLOWED_LIDS;
+    env.PERSONAL_FINANCE_ALLOWED_PHONES = "5544998581299";
+    env.PERSONAL_FINANCE_ALLOWED_LIDS = "11085394505852@lid";
+
+    try {
+      const service = new PersonalFinanceService();
+      expect(
+        service.canHandle({
+          phone: "11085394505852",
+          senderId: "11085394505852@lid",
+          text: "fin-darithur\nMercado\n10\nBacon"
+        })
+      ).toBe(true);
+    } finally {
+      env.PERSONAL_FINANCE_ALLOWED_PHONES = originalAllowedPhones;
+      env.PERSONAL_FINANCE_ALLOWED_LIDS = originalAllowedLids;
+    }
   });
 });

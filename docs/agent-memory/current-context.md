@@ -1,6 +1,6 @@
 # Current Context
 
-Ultima atualizacao: 2026-08-22
+Ultima atualizacao: 2026-09-09
 
 ## Projeto
 
@@ -31,6 +31,8 @@ Ja existe uma base funcional com:
 - Integracao pessoal com Google Sheets adicionada ao webhook WAHA para mensagens com prefixo `fin`, limitada aos telefones configurados em `PERSONAL_FINANCE_ALLOWED_PHONES`. Ela registra historico na aba `Lancamentos` e soma direto na aba mensal.
 - Integracao pessoal com Google Sheets agora aceita no webhook WAHA o formato multiline sem IA iniciado por `fin-darithur` (`Categoria`, `Valor`, `Descricao`, `Data`).
 - O gatilho da planilha exige que a primeira linha seja exatamente `fin-darithur`; mensagens comuns nao entram no fluxo financeiro.
+- Diagnostico em producao mostrou que eventos `session.status` do WAHA chegam em `/webhooks/waha`, mas eventos `message` estavam sendo descartados dentro do WAHA/WebJS antes da API com erro `parseMessageIdSerialized`/`Cannot read properties of undefined (reading 'includes')`. Tambem houve erro WAHA `No LID for user` em `/api/sendText`, indicando problema de resolucao LID/chatId no WAHA, nao no Google Sheets.
+- Apos atualizar o WAHA, eventos `message` voltaram a chegar na API. Foi identificado que mensagens privadas podem chegar como `@lid` (`senderPhone` numerico nao telefonico), fazendo `fin-darithur` ser ignorado por nao bater com `PERSONAL_FINANCE_ALLOWED_PHONES`. O webhook tenta resolver LID antes de validar/processar a planilha, e o fluxo pessoal agora tambem aceita whitelist explicita em `PERSONAL_FINANCE_ALLOWED_LIDS` para quando o WAHA nao resolve o telefone real.
 - Prompt de IA contextualiza o Redeas como agente financeiro agro, com controle financeiro, agenda e planejamento condicionado ao plano do cliente.
 - Repositorio de assinaturas agora expoe o plano ativo do usuario para contextualizar recursos disponiveis.
 - Repositorios Supabase para usuarios, fazendas, transacoes, uso e planejamento.
@@ -57,6 +59,7 @@ Principio adotado:
 - Gerar alertas persistidos em 50%, 80%, 100% e estouro.
 - Evoluir processamento com IA para saida estruturada validada por Zod antes de executar acoes financeiras alem do parser atual.
 - Confirmar na VPS o JSON da Service Account Google e as variaveis `PERSONAL_FINANCE_*`; nao versionar o JSON.
+- Estabilizar WAHA em producao antes de debugar planilha: validar chegada de `POST /webhooks/waha` com evento `message`, evitar webhooks duplicados quando possivel e investigar bug WebJS/LID se continuar apos restart/update.
 - Implementar transcricao/OCR real de audio, fotos e documentos vindos do WAHA. Preferir bibliotecas TypeScript viaveis quando houver arquivo/midia acessivel; se nao atender qualidade/formatos, usar modelos de IA para transcricao e visao.
 - Definir estrategia de historico/avaliacao de agentes, possivelmente com Postgres + pgvector depois.
 
@@ -75,6 +78,11 @@ Principio adotado:
 - `npm.cmd run build` -> passou apos integracao pessoal com Google Sheets.
 - `npm.cmd run typecheck` -> passou apos suporte ao formato multiline da planilha.
 - `npm.cmd test -- --run` -> 54 testes passaram apos suporte ao formato multiline da planilha.
+- VPS: `docker compose -f docker-compose.prod.yml logs -f --tail=100 api waha` usado para diagnosticar WAHA. Logs mostraram `session.status` chegando na API, mas mensagens `message` sendo descartadas no WAHA com erro interno WebJS antes do webhook.
+- `npm.cmd test -- --run src/infrastructure/http/routes/webhook-routes.test.ts` -> passou apos ajuste de resolucao LID para planilha.
+- `npm.cmd run typecheck` -> passou apos ajuste de resolucao LID para planilha.
+- `npm.cmd test -- --run src/infrastructure/http/routes/webhook-routes.test.ts src/infrastructure/personal-finance/personal-finance-service.test.ts` -> passou apos adicionar `PERSONAL_FINANCE_ALLOWED_LIDS`.
+- `npm.cmd run typecheck` -> passou apos adicionar `PERSONAL_FINANCE_ALLOWED_LIDS`.
 
 ## Como Continuar em Novo Chat
 

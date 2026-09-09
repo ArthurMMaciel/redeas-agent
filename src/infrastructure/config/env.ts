@@ -38,6 +38,7 @@ const envSchema = z.object({
   PERSONAL_FINANCE_GOOGLE_CREDENTIALS_PATH: z.string().optional(),
   PERSONAL_FINANCE_GOOGLE_SHEET_ID: z.string().optional(),
   PERSONAL_FINANCE_ALLOWED_PHONES: z.string().optional(),
+  PERSONAL_FINANCE_ALLOWED_LIDS: z.string().optional(),
   PERSONAL_FINANCE_LANCAMENTOS_SHEET: z.string().default("Lancamentos"),
   PERSONAL_FINANCE_MONTH_SHEET_NAMES: z.string().optional(),
   PERSONAL_FINANCE_MONTH_CATEGORY_COLUMN: z.string().default("A"),
