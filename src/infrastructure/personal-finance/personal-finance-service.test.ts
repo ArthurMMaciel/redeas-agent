@@ -58,6 +58,11 @@ describe("parseFinanceCommand", () => {
     expect(parseFinanceCommand("fin-darithur\nCartão\n10\ncompra")?.category).toBe("Cartao");
     expect(parseFinanceCommand("fin-darithur\nSaúde\n10\nremédio")?.category).toBe("Saude");
   });
+  it("aceita categorias de impostos e seguro", () => {
+    expect(parseFinanceCommand("fin-darithur\nIPVA\n100\nparcela")?.category).toBe("IPVA");
+    expect(parseFinanceCommand("fin-darithur\nIPTU\n80\ncasa")?.category).toBe("IPTU");
+    expect(parseFinanceCommand("fin-darithur\nSeguro\n250\ncarro")?.category).toBe("Seguro");
+  });
 });
 
 describe("parseMoney", () => {

@@ -50,6 +50,9 @@ Categorias aceitas no WhatsApp e escrita recomendada na planilha mensal:
 | `Viagem` | `Viagem` |
 | `Moto` | `Moto` |
 | `Saude` ou `Saúde` | `Saúde` |
+| `IPVA` | `IPVA` |
+| `IPTU` | `IPTU` |
+| `Seguro` | `Seguro` |
 | `MEI` | `MEI` |
 | `Rino` | `Rino` |
 | `Imprevistos` | `Imprevistos` |

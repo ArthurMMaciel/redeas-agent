@@ -34,6 +34,7 @@ Ja existe uma base funcional com:
 - Diagnostico em producao mostrou que eventos `session.status` do WAHA chegam em `/webhooks/waha`, mas eventos `message` estavam sendo descartados dentro do WAHA/WebJS antes da API com erro `parseMessageIdSerialized`/`Cannot read properties of undefined (reading 'includes')`. Tambem houve erro WAHA `No LID for user` em `/api/sendText`, indicando problema de resolucao LID/chatId no WAHA, nao no Google Sheets.
 - Apos atualizar o WAHA, eventos `message` voltaram a chegar na API. Foi identificado que mensagens privadas podem chegar como `@lid` (`senderPhone` numerico nao telefonico), fazendo `fin-darithur` ser ignorado por nao bater com `PERSONAL_FINANCE_ALLOWED_PHONES`. O webhook tenta resolver LID antes de validar/processar a planilha, e o fluxo pessoal agora tambem aceita whitelist explicita em `PERSONAL_FINANCE_ALLOWED_LIDS` para quando o WAHA nao resolve o telefone real.
 - Em producao, o fluxo da planilha chegou em `Processing personal finance message`, mas falhou com `ENOENT` ao abrir `/opt/redeas/secrets/google-service-account.json` dentro do container `api`. `docker-compose.prod.yml` agora monta `/opt/redeas/secrets` no container da API como somente leitura.
+- Categorias pessoais da planilha incluem tambem `IPVA`, `IPTU` e `Seguro`.
 - Prompt de IA contextualiza o Redeas como agente financeiro agro, com controle financeiro, agenda e planejamento condicionado ao plano do cliente.
 - Repositorio de assinaturas agora expoe o plano ativo do usuario para contextualizar recursos disponiveis.
 - Repositorios Supabase para usuarios, fazendas, transacoes, uso e planejamento.
@@ -85,6 +86,8 @@ Principio adotado:
 - `npm.cmd test -- --run src/infrastructure/http/routes/webhook-routes.test.ts src/infrastructure/personal-finance/personal-finance-service.test.ts` -> passou apos adicionar `PERSONAL_FINANCE_ALLOWED_LIDS`.
 - `npm.cmd run typecheck` -> passou apos adicionar `PERSONAL_FINANCE_ALLOWED_LIDS`.
 - Ajuste de deploy: adicionado volume read-only `/opt/redeas/secrets:/opt/redeas/secrets:ro` no servico `api` para permitir leitura do JSON da Service Account Google.
+- `npm.cmd test -- --run src/infrastructure/personal-finance/personal-finance-service.test.ts` -> passou apos adicionar `IPVA`, `IPTU` e `Seguro`.
+- `npm.cmd run typecheck` -> passou apos adicionar `IPVA`, `IPTU` e `Seguro`.
 
 ## Como Continuar em Novo Chat
 
