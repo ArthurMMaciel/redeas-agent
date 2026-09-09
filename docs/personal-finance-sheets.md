@@ -30,33 +30,36 @@ posto shell
 22/08/2026
 ```
 
-Categorias aceitas:
+Categorias aceitas no WhatsApp e escrita recomendada na planilha mensal:
 
-```text
-Condominio
-Gas
-Luz
-Internet
-Unimed
-Mercado
-Gasolina
-Cartao
-Banho Sukita
-Reserva
-Investimentos
-Lazer
-Caixinha
-Viagem
-Moto
-Saude
-MEI
-Rino
-Imprevistos
-Obras
-```
+| Enviar no WhatsApp | Linha recomendada na planilha |
+| --- | --- |
+| `Condominio` ou `Condomínio` | `Condomínio` |
+| `Gas` ou `Gás` | `Gás` |
+| `Luz` | `Luz` |
+| `Internet` | `Internet` |
+| `Unimed` | `Unimed` |
+| `Mercado` | `Mercado` |
+| `Gasolina` | `Gasolina` |
+| `Cartao` ou `Cartão` | `Cartão` |
+| `Banho Sukita` | `Banho Sukita` |
+| `Reserva` | `Reserva` |
+| `Investimentos` | `Investimentos` |
+| `Lazer` | `Lazer` |
+| `Caixinha` | `Caixinha` |
+| `Viagem` | `Viagem` |
+| `Moto` | `Moto` |
+| `Saude` ou `Saúde` | `Saúde` |
+| `MEI` | `MEI` |
+| `Rino` | `Rino` |
+| `Imprevistos` | `Imprevistos` |
+| `Obras` | `Obras` |
 
 O parser ignora acentos e maiusculas/minusculas, entao `cartao`, `cartão`,
 `Cartao` e `Cartão` funcionam.
+
+Na planilha mensal, a comparacao tambem ignora acentos e maiusculas/minusculas,
+mas a escrita recomendada acima deixa o historico mais legivel.
 
 ## Planilha
 
