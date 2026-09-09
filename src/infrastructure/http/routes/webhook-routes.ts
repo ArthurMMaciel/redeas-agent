@@ -58,17 +58,36 @@ export function registerWebhookRoutes(app: FastifyInstance) {
         "Processing personal finance message"
       );
 
-      const text = await currentContainer.personalFinance.process({
-        phone: personalFinancePhone,
-        text: message.text,
-        messageId: message.providerMessageId,
-        receivedAt: message.receivedAt
-      });
+      try {
+        const text = await currentContainer.personalFinance.process({
+          phone: personalFinancePhone,
+          text: message.text,
+          messageId: message.providerMessageId,
+          receivedAt: message.receivedAt
+        });
 
-      await currentContainer.whatsApp.sendText({
-        phone: replyChatId,
-        text
-      });
+        await currentContainer.whatsApp.sendText({
+          phone: replyChatId,
+          text
+        });
+      } catch (error) {
+        request.log.error(
+          {
+            error,
+            channel: "whatsapp",
+            conversationId: message.chatId,
+            senderPhone: message.senderPhone,
+            personalFinancePhone,
+            messageId: message.providerMessageId
+          },
+          "Personal finance message failed"
+        );
+
+        await currentContainer.whatsApp.sendText({
+          phone: replyChatId,
+          text: "Nao consegui registrar esse lancamento na planilha. Verifiquei a mensagem, mas a escrita no Google Sheets falhou."
+        });
+      }
 
       return reply.code(202).send({ accepted: true, handler: "personal_finance" });
     }
