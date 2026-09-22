@@ -1,6 +1,6 @@
 # Current Context
 
-Ultima atualizacao: 2026-09-09
+Ultima atualizacao: 2026-09-22
 
 ## Projeto
 
@@ -34,7 +34,9 @@ Ja existe uma base funcional com:
 - Diagnostico em producao mostrou que eventos `session.status` do WAHA chegam em `/webhooks/waha`, mas eventos `message` estavam sendo descartados dentro do WAHA/WebJS antes da API com erro `parseMessageIdSerialized`/`Cannot read properties of undefined (reading 'includes')`. Tambem houve erro WAHA `No LID for user` em `/api/sendText`, indicando problema de resolucao LID/chatId no WAHA, nao no Google Sheets.
 - Apos atualizar o WAHA, eventos `message` voltaram a chegar na API. Foi identificado que mensagens privadas podem chegar como `@lid` (`senderPhone` numerico nao telefonico), fazendo `fin-darithur` ser ignorado por nao bater com `PERSONAL_FINANCE_ALLOWED_PHONES`. O webhook tenta resolver LID antes de validar/processar a planilha, e o fluxo pessoal agora tambem aceita whitelist explicita em `PERSONAL_FINANCE_ALLOWED_LIDS` para quando o WAHA nao resolve o telefone real.
 - Em producao, o fluxo da planilha chegou em `Processing personal finance message`, mas falhou com `ENOENT` ao abrir `/opt/redeas/secrets/google-service-account.json` dentro do container `api`. `docker-compose.prod.yml` agora monta `/opt/redeas/secrets` no container da API como somente leitura.
-- Categorias pessoais da planilha incluem tambem `IPVA`, `IPTU` e `Seguro`.
+- Categorias pessoais da planilha incluem: `Condominio`, `Gas`, `Luz`, `Internet`, `Unimed`, `Mercado`, `Gasolina`, `Cartao`, `Banho Sukita`, `Reserva`, `Investimentos`, `Lazer`, `Caixinha`, `Viagem`, `Moto`, `Saude`, `MEI`, `Rino`, `Seguro`, `IPVA`, `IPTU`, `Muay-thai`, `Imprevistos`, `Obras`, `Uso Mesada Arthur` e `Uso Mesada Dari`. O parser ignora acentos/maiusculas e os nomes de exibicao mantem acentos na resposta/historico quando aplicavel.
+- Fluxo pessoal fin-darithur agora roteia comandos deterministas alem de lancamentos: relatorios mensais, todos os meses, categorias, categoria especifica, dia, diarios por mes; remocao/subtracao de valor; e inclusao na aba Necessidades com colunas Item e Comprado em.
+- Nova integracao pessoal de futebol usa o gatilho agente-bote-certo, a mesma Service Account Google e uma planilha separada configurada por PERSONAL_FOOTBALL_GOOGLE_SHEET_ID. A planilha tem Visao Geral como primeira aba e abas mensais Janeiro-Dezembro; o payload principal aceita lote mensal em linhas CSV Atleta,Gols,Gols contra,Assistencias,Cartoes amarelos,Cartoes vermelhos,Jogos, somando nas colunas B:G.
 - Prompt de IA contextualiza o Redeas como agente financeiro agro, com controle financeiro, agenda e planejamento condicionado ao plano do cliente.
 - Repositorio de assinaturas agora expoe o plano ativo do usuario para contextualizar recursos disponiveis.
 - Repositorios Supabase para usuarios, fazendas, transacoes, uso e planejamento.
@@ -60,7 +62,9 @@ Principio adotado:
 - Implementar planejamento de safra e itens de orcamento.
 - Gerar alertas persistidos em 50%, 80%, 100% e estouro.
 - Evoluir processamento com IA para saida estruturada validada por Zod antes de executar acoes financeiras alem do parser atual.
-- Confirmar na VPS o JSON da Service Account Google e as variaveis `PERSONAL_FINANCE_*`; nao versionar o JSON.
+- Confirmar na VPS o JSON da Service Account Google e as variaveis PERSONAL_FINANCE_*; nao versionar o JSON.
+- Configurar PERSONAL_FOOTBALL_GOOGLE_SHEET_ID na VPS apos criar/compartilhar a planilha do agente agente-bote-certo; opcionalmente definir PERSONAL_FOOTBALL_STATS_SHEET se a aba de estatisticas nao for a primeira.
+- Compartilhar a nova planilha de futebol com o client_email da Service Account Google como Editor; o .env local nao contem PERSONAL_FINANCE_GOOGLE_CREDENTIALS_PATH, entao o email nao foi possivel extrair deste workspace.
 - Estabilizar WAHA em producao antes de debugar planilha: validar chegada de `POST /webhooks/waha` com evento `message`, evitar webhooks duplicados quando possivel e investigar bug WebJS/LID se continuar apos restart/update.
 - Implementar transcricao/OCR real de audio, fotos e documentos vindos do WAHA. Preferir bibliotecas TypeScript viaveis quando houver arquivo/midia acessivel; se nao atender qualidade/formatos, usar modelos de IA para transcricao e visao.
 - Definir estrategia de historico/avaliacao de agentes, possivelmente com Postgres + pgvector depois.
@@ -88,6 +92,15 @@ Principio adotado:
 - Ajuste de deploy: adicionado volume read-only `/opt/redeas/secrets:/opt/redeas/secrets:ro` no servico `api` para permitir leitura do JSON da Service Account Google.
 - `npm.cmd test -- --run src/infrastructure/personal-finance/personal-finance-service.test.ts` -> passou apos adicionar `IPVA`, `IPTU` e `Seguro`.
 - `npm.cmd run typecheck` -> passou apos adicionar `IPVA`, `IPTU` e `Seguro`.
+- `npm.cmd test -- --run src/infrastructure/personal-finance/personal-finance-service.test.ts` -> 10 testes passaram apos adicionar `Muay-thai`, `Uso Mesada Arthur` e `Uso Mesada Dari`.
+- `npm.cmd run typecheck` -> passou apos atualizar categorias pessoais da planilha.
+- `npm.cmd test -- --run` -> 60 testes passaram apos atualizar categorias pessoais da planilha.
+-
+pm.cmd run typecheck -> passou apos adicionar relatorios/remocao/necessidades e agente gente-bote-certo.
+-
+pm.cmd test -- --run src/infrastructure/personal-finance/personal-finance-service.test.ts -> 14 testes passaram apos novos parsers.
+-
+pm.cmd test -- --run -> 64 testes passaram apos novos comandos pessoais.
 
 ## Como Continuar em Novo Chat
 

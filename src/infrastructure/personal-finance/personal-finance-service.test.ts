@@ -3,7 +3,8 @@ import {
   PersonalFinanceService,
   normalizeBrazilianPhone,
   parseFinanceCommand,
-  parseMoney
+  parseMoney,
+  parsePersonalCommand
 } from "./personal-finance-service.js";
 import { env } from "../config/env.js";
 
@@ -62,6 +63,87 @@ describe("parseFinanceCommand", () => {
     expect(parseFinanceCommand("fin-darithur\nIPVA\n100\nparcela")?.category).toBe("IPVA");
     expect(parseFinanceCommand("fin-darithur\nIPTU\n80\ncasa")?.category).toBe("IPTU");
     expect(parseFinanceCommand("fin-darithur\nSeguro\n250\ncarro")?.category).toBe("Seguro");
+  });
+
+  it("aceita novas categorias da planilha mensal", () => {
+    expect(parseFinanceCommand("fin-darithur\nMuay-thai\n90\nmensalidade")?.category).toBe("Muay-thai");
+    expect(parseFinanceCommand("fin-darithur\nUso Mesada Arthur\n35\nlanche")?.category).toBe("Uso Mesada Arthur");
+    expect(parseFinanceCommand("fin-darithur\nUso Mesada Dari\n42\nalmoco")?.category).toBe("Uso Mesada Dari");
+  });
+});
+
+
+describe("parsePersonalCommand", () => {
+  it("interpreta relatorio mensal", () => {
+    const command = parsePersonalCommand(
+      "fin-darithur\nrelatorio\nmes\n09/2026",
+      new Date("2026-09-21T12:00:00-03:00")
+    );
+
+    expect(command).toMatchObject({
+      trigger: "finance",
+      type: "report",
+      kind: "month",
+      month: 8,
+      year: 2026
+    });
+  });
+
+  it("interpreta remocao de valor", () => {
+    const command = parsePersonalCommand(
+      "fin-darithur\nremover\nMercado\n85,90\ncompra duplicada\n22/09/2026",
+      new Date("2026-09-21T12:00:00-03:00")
+    );
+
+    expect(command).toMatchObject({
+      trigger: "finance",
+      type: "remove",
+      category: "Mercado",
+      amount: 85.9,
+      description: "compra duplicada"
+    });
+  });
+
+  it("interpreta necessidade com data opcional", () => {
+    const command = parsePersonalCommand(
+      "fin-darithur\nnecessidade\nFiltro de agua\n22/09/2026",
+      new Date("2026-09-21T12:00:00-03:00")
+    );
+
+    expect(command).toMatchObject({
+      trigger: "finance",
+      type: "need",
+      item: "Filtro de agua"
+    });
+  });
+
+  it("interpreta o agente de futebol bote certo", () => {
+    const command = parsePersonalCommand("agente-bote-certo\ngol\nBraza\n2");
+
+    expect(command).toMatchObject({
+      trigger: "football",
+      type: "football-update",
+      metric: "Gols",
+      athlete: "Braza",
+      amount: 2
+    });
+  });
+
+  it("interpreta lote mensal do agente de futebol", () => {
+    const command = parsePersonalCommand(
+      "agente-bote-certo\nSetembro\nBraza,1,2,3,0,0,1\nIgao,2",
+      new Date("2026-09-21T12:00:00-03:00")
+    );
+
+    expect(command).toMatchObject({
+      trigger: "football",
+      type: "football-batch",
+      month: 8,
+      updates: [
+        { athlete: "Braza", values: [1, 2, 3, 0, 0, 1] },
+        { athlete: "Igao", values: [2] }
+      ]
+    });
   });
 });
 

@@ -50,13 +50,16 @@ Categorias aceitas no WhatsApp e escrita recomendada na planilha mensal:
 | `Viagem` | `Viagem` |
 | `Moto` | `Moto` |
 | `Saude` ou `Saúde` | `Saúde` |
-| `IPVA` | `IPVA` |
-| `IPTU` | `IPTU` |
-| `Seguro` | `Seguro` |
 | `MEI` | `MEI` |
 | `Rino` | `Rino` |
+| `Seguro` | `Seguro` |
+| `IPVA` | `IPVA` |
+| `IPTU` | `IPTU` |
+| `Muay-thai` | `Muay-thai` |
 | `Imprevistos` | `Imprevistos` |
 | `Obras` | `Obras` |
+| `Uso Mesada Arthur` | `Uso Mesada Arthur` |
+| `Uso Mesada Dari` | `Uso Mesada Dari` |
 
 O parser ignora acentos e maiusculas/minusculas, entao `cartao`, `cartão`,
 `Cartao` e `Cartão` funcionam.
@@ -145,3 +148,174 @@ PERSONAL_FINANCE_MONTH_VALUE_COLUMN=B
 Se o WAHA entregar mensagens privadas com `senderId` no formato `@lid` e nao conseguir
 resolver esse LID para o telefone real, inclua o LID observado nos logs em
 `PERSONAL_FINANCE_ALLOWED_LIDS`.
+
+## Comandos financeiros no WhatsApp
+
+Todos os comandos financeiros continuam usando a primeira linha exatamente como `fin-darithur`.
+
+Lancamento:
+
+```text
+fin-darithur
+Mercado
+85.90
+arroz e carne
+22/09/2026
+```
+
+Remover/subtrair valor da categoria no mes da data informada:
+
+```text
+fin-darithur
+remover
+Mercado
+85.90
+compra duplicada
+22/09/2026
+```
+
+Relatorio mensal:
+
+```text
+fin-darithur
+relatorio
+mes
+09/2026
+```
+
+Relatorio de todos os meses, somando cada aba mensal:
+
+```text
+fin-darithur
+relatorio
+todos
+```
+
+Relatorio de categorias em todos os meses:
+
+```text
+fin-darithur
+relatorio
+categorias
+```
+
+Relatorio de uma categoria em todos os meses ou em um mes especifico:
+
+```text
+fin-darithur
+relatorio
+categoria
+Mercado
+```
+
+```text
+fin-darithur
+relatorio
+categoria
+Mercado
+09/2026
+```
+
+Relatorio de um dia ou consolidado diario de um mes, usando a aba `Lancamentos`:
+
+```text
+fin-darithur
+relatorio
+dia
+22/09/2026
+```
+
+```text
+fin-darithur
+relatorio
+dias
+09/2026
+```
+
+## Necessidades
+
+A aba `Necessidades` deve ter apenas as colunas `Item` e `Comprado em`. O item e obrigatorio. A data de compra e opcional.
+
+```text
+fin-darithur
+necessidade
+Filtro de agua
+```
+
+```text
+fin-darithur
+necessidade
+Filtro de agua
+22/09/2026
+```
+
+A aba pode ser renomeada via:
+
+```env
+PERSONAL_FINANCE_NECESSIDADES_SHEET=Necessidades
+```
+
+## Futebol: agente-bote-certo
+
+A outra planilha usa o gatilho `agente-bote-certo`. Compartilhe essa planilha com a mesma Service Account usada nas financas, como Editor.
+
+Estrutura esperada:
+
+- Primeira aba: `Visao Geral`.
+- Abas seguintes: `Janeiro` ate `Dezembro`, nessa ordem/nome.
+- Em cada aba mensal, colunas `A:G`:
+
+```text
+Atleta | Gols | Gols contra | Assistencias | Cartoes amarelos | Cartoes vermelhos | Jogos
+```
+
+Payload em lote:
+
+```text
+agente-bote-certo
+Setembro
+Braza,1,2,3,0,0,1
+Igao,2
+Joao Gustavo,0,0,1,1,0,1
+```
+
+A primeira linha depois do gatilho pode ser o mes. Se omitir o mes, a API usa o mes atual. Depois disso, cada linha representa:
+
+```text
+Atleta,Gols,Gols contra,Assistencias,Cartoes amarelos,Cartoes vermelhos,Jogos
+```
+
+Nao precisa mandar todas as colunas. `Braza,2` soma 2 em `Gols` e deixa as outras colunas como estao. Valores `0` sao aceitos no payload completo.
+
+Os comandos antigos simples ainda funcionam, usando o mes atual:
+
+```text
+agente-bote-certo
+gol
+Braza
+1
+```
+
+Relatorios do mes atual ou de um mes informado:
+
+```text
+agente-bote-certo
+relatorio
+resumo
+Setembro
+```
+
+```text
+agente-bote-certo
+relatorio
+gols
+Setembro
+```
+
+Tipos de relatorio aceitos: `resumo`, `gols`, `gols contra`, `assistencias`, `amarelos`, `vermelhos`, `jogos`.
+
+Variavel obrigatoria:
+
+```env
+PERSONAL_FOOTBALL_GOOGLE_SHEET_ID=
+```
