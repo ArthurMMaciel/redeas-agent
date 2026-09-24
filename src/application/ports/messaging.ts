@@ -11,7 +11,7 @@ export interface IncomingWhatsAppMessage {
 }
 
 export interface WhatsAppGateway {
-  sendText(input: { phone: string; text: string }): Promise<WhatsAppSendResult>;
+  sendText(input: { phone: string; text: string; session?: string }): Promise<WhatsAppSendResult>;
 }
 
 export interface WhatsAppSendResult {

@@ -48,7 +48,7 @@ export function extractWahaMessage(
           nestedString(payload.key, "participant")
         )
     : fromMe
-      ? options.ownPhone ?? rawChatId
+      ? options.ownPhone ?? null
       : rawChatId;
   const senderId = normalizeWhatsAppId(rawSenderId);
   const senderPhone = normalizePhone(rawSenderId);

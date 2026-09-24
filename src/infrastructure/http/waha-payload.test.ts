@@ -58,6 +58,50 @@ describe("extractWahaMessage", () => {
     expect(message).toBeNull();
   });
 
+
+  it("processa mensagens privadas fromMe quando habilitado e ownPhone configurado", () => {
+    const message = extractWahaMessage(
+      {
+        payload: {
+          id: "msg-private-from-me",
+          chatId: "5544998581299@c.us",
+          fromMe: true,
+          body: "fin-darithur\nMercado\n10\nteste"
+        }
+      },
+      {
+        processPrivateFromMe: true,
+        ownPhone: "5544998924520"
+      }
+    );
+
+    expect(message).toMatchObject({
+      providerMessageId: "msg-private-from-me",
+      chatId: "5544998581299@c.us",
+      senderId: "5544998924520",
+      senderPhone: "5544998924520",
+      isGroup: false,
+      fromMe: true
+    });
+  });
+
+  it("ignora mensagens privadas fromMe quando ownPhone nao esta configurado", () => {
+    const message = extractWahaMessage(
+      {
+        payload: {
+          id: "msg-private-from-me-no-own-phone",
+          chatId: "5544998581299@c.us",
+          fromMe: true,
+          body: "fin-darithur\nMercado\n10\nteste"
+        }
+      },
+      {
+        processPrivateFromMe: true
+      }
+    );
+
+    expect(message).toBeNull();
+  });
   it("processa mensagens fromMe em grupo quando habilitado explicitamente", () => {
     const message = extractWahaMessage(
       {

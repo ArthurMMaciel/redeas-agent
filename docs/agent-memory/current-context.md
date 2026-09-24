@@ -1,6 +1,6 @@
 # Current Context
 
-Ultima atualizacao: 2026-09-22
+Ultima atualizacao: 2026-09-23
 
 ## Projeto
 
@@ -33,10 +33,13 @@ Ja existe uma base funcional com:
 - O gatilho da planilha exige que a primeira linha seja exatamente `fin-darithur`; mensagens comuns nao entram no fluxo financeiro.
 - Diagnostico em producao mostrou que eventos `session.status` do WAHA chegam em `/webhooks/waha`, mas eventos `message` estavam sendo descartados dentro do WAHA/WebJS antes da API com erro `parseMessageIdSerialized`/`Cannot read properties of undefined (reading 'includes')`. Tambem houve erro WAHA `No LID for user` em `/api/sendText`, indicando problema de resolucao LID/chatId no WAHA, nao no Google Sheets.
 - Apos atualizar o WAHA, eventos `message` voltaram a chegar na API. Foi identificado que mensagens privadas podem chegar como `@lid` (`senderPhone` numerico nao telefonico), fazendo `fin-darithur` ser ignorado por nao bater com `PERSONAL_FINANCE_ALLOWED_PHONES`. O webhook tenta resolver LID antes de validar/processar a planilha, e o fluxo pessoal agora tambem aceita whitelist explicita em `PERSONAL_FINANCE_ALLOWED_LIDS` para quando o WAHA nao resolve o telefone real.
+- Para processar mensagens enviadas pelo proprio WhatsApp conectado ao WAHA, producao deve usar `WAHA_PROCESS_PRIVATE_FROM_ME=true` e `WAHA_OWN_PHONE=5544998924520`; o parser agora exige `WAHA_OWN_PHONE` para `fromMe` privado e o webhook loga `personal_finance_sender_not_allowed` quando o comando pessoal chega mas a identidade/whitelist nao bate.
 - Em producao, o fluxo da planilha chegou em `Processing personal finance message`, mas falhou com `ENOENT` ao abrir `/opt/redeas/secrets/google-service-account.json` dentro do container `api`. `docker-compose.prod.yml` agora monta `/opt/redeas/secrets` no container da API como somente leitura.
 - Categorias pessoais da planilha incluem: `Condominio`, `Gas`, `Luz`, `Internet`, `Unimed`, `Mercado`, `Gasolina`, `Cartao`, `Banho Sukita`, `Reserva`, `Investimentos`, `Lazer`, `Caixinha`, `Viagem`, `Moto`, `Saude`, `MEI`, `Rino`, `Seguro`, `IPVA`, `IPTU`, `Muay-thai`, `Imprevistos`, `Obras`, `Uso Mesada Arthur` e `Uso Mesada Dari`. O parser ignora acentos/maiusculas e os nomes de exibicao mantem acentos na resposta/historico quando aplicavel.
 - Fluxo pessoal fin-darithur agora roteia comandos deterministas alem de lancamentos: relatorios mensais, todos os meses, categorias, categoria especifica, dia, diarios por mes; remocao/subtracao de valor; e inclusao na aba Necessidades com colunas Item e Comprado em.
-- Nova integracao pessoal de futebol usa o gatilho agente-bote-certo, a mesma Service Account Google e uma planilha separada configurada por PERSONAL_FOOTBALL_GOOGLE_SHEET_ID. A planilha tem Visao Geral como primeira aba e abas mensais Janeiro-Dezembro; o payload principal aceita lote mensal em linhas CSV Atleta,Gols,Gols contra,Assistencias,Cartoes amarelos,Cartoes vermelhos,Jogos, somando nas colunas B:G.
+- Cron diario do fin-darithur agenda envio as 8h America/Sao_Paulo para 5544998581299 pela sessao Arthur-Redeas-2, com resumo da aba mensal atual e necessidades sem Comprado em.
+- Nova integracao pessoal de futebol usa o gatilho agente-bote-certo, a mesma Service Account Google e uma planilha separada configurada por PERSONAL_FOOTBALL_GOOGLE_SHEET_ID. A planilha tem Visao Geral como primeira aba e abas mensais Janeiro-Dezembro.
+- Payload em lote do futebol agora aceita linhas CSV Atleta,Gols,Gols contra,Assistencias,Cartoes amarelos,Cartoes vermelhos. A coluna Jogos nao deve ser enviada: cada atleta reconhecido em uma linha soma +1 jogo; atleta sozinho tambem soma apenas +1 jogo.
 - Prompt de IA contextualiza o Redeas como agente financeiro agro, com controle financeiro, agenda e planejamento condicionado ao plano do cliente.
 - Repositorio de assinaturas agora expoe o plano ativo do usuario para contextualizar recursos disponiveis.
 - Repositorios Supabase para usuarios, fazendas, transacoes, uso e planejamento.
@@ -101,6 +104,20 @@ pm.cmd run typecheck -> passou apos adicionar relatorios/remocao/necessidades e 
 pm.cmd test -- --run src/infrastructure/personal-finance/personal-finance-service.test.ts -> 14 testes passaram apos novos parsers.
 -
 pm.cmd test -- --run -> 64 testes passaram apos novos comandos pessoais.
+
+- npm.cmd test -- --run src/infrastructure/personal-finance/personal-finance-service.test.ts -> 15 testes passaram apos alterar payload do futebol para jogo automatico por atleta.
+- npm.cmd run typecheck -> passou apos alterar payload do futebol.
+- npm.cmd test -- --run -> 65 testes passaram apos alterar payload do futebol.
+
+- npm.cmd test -- --run src/infrastructure/personal-finance/personal-finance-service.test.ts src/infrastructure/jobs/personal-finance-daily-summary-job.test.ts src/infrastructure/waha/waha-client.test.ts -> 19 testes passaram apos cron do resumo diario.
+- npm.cmd test -- --run -> 67 testes passaram apos cron do resumo diario.
+- npm.cmd run typecheck -> passou apos cron do resumo diario.
+- npm.cmd run build -> passou apos cron do resumo diario.
+
+- npm.cmd test -- --run src/infrastructure/http/waha-payload.test.ts src/infrastructure/http/routes/webhook-routes.test.ts src/infrastructure/personal-finance/personal-finance-service.test.ts -> 38 testes passaram apos diagnostico/fix de mensagens fromMe privadas.
+- npm.cmd run typecheck -> passou apos diagnostico/fix de mensagens fromMe privadas.
+- npm.cmd test -- --run -> 69 testes passaram apos diagnostico/fix de mensagens fromMe privadas.
+- npm.cmd run build -> passou apos diagnostico/fix de mensagens fromMe privadas.
 
 ## Como Continuar em Novo Chat
 

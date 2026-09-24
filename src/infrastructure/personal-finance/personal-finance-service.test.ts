@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PersonalFinanceService,
+  formatDailySummaryMessage,
   normalizeBrazilianPhone,
   parseFinanceCommand,
   parseMoney,
@@ -131,7 +132,13 @@ describe("parsePersonalCommand", () => {
 
   it("interpreta lote mensal do agente de futebol", () => {
     const command = parsePersonalCommand(
-      "agente-bote-certo\nSetembro\nBraza,1,2,3,0,0,1\nIgao,2",
+      [
+        'agente-bote-certo',
+        'Setembro',
+        'Braza,1,2,3,0,0',
+        'Igao,2',
+        'Luca'
+      ].join(String.fromCharCode(10)),
       new Date("2026-09-21T12:00:00-03:00")
     );
 
@@ -140,13 +147,37 @@ describe("parsePersonalCommand", () => {
       type: "football-batch",
       month: 8,
       updates: [
-        { athlete: "Braza", values: [1, 2, 3, 0, 0, 1] },
-        { athlete: "Igao", values: [2] }
+        { athlete: 'Braza', values: [1, 2, 3, 0, 0, 1] },
+        { athlete: 'Igao', values: [2, 0, 0, 0, 0, 1] },
+        { athlete: 'Luca', values: [0, 0, 0, 0, 0, 1] }
       ]
     });
   });
 });
 
+
+describe("formatDailySummaryMessage", () => {
+  it("formata resumo do mes e necessidades abertas", () => {
+    const text = formatDailySummaryMessage(
+      "Setembro",
+      2026,
+      [
+        { category: "Mercado", amount: 120.5 },
+        { category: "Luz", amount: 80 }
+      ],
+      ["Filtro de agua", "Gas"]
+    );
+
+    const normalizedText = text.replace(/\u00a0/g, " ");
+
+    expect(normalizedText).toContain("Resumo do mes ate hoje:");
+    expect(normalizedText).toContain("Setembro/2026");
+    expect(normalizedText).toContain("Total: R$ 200,50");
+    expect(normalizedText).toContain("Mercado: R$ 120,50");
+    expect(normalizedText).toContain("Necessidades:");
+    expect(normalizedText).toContain("- Filtro de agua");
+  });
+});
 describe("parseMoney", () => {
   it("interpreta valores em formato brasileiro", () => {
     expect(parseMoney("1.234,56")).toBe(1234.56);

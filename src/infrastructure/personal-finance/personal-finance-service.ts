@@ -253,6 +253,10 @@ export class PersonalFinanceService {
     );
   }
 
+
+  looksLikeCommand(text: string): boolean {
+    return looksLikePersonalCommand(text);
+  }
   async process(input: PersonalFinanceMessage): Promise<string> {
     if (!this.isConfigured()) {
       return "Financeiro pessoal ainda nao esta configurado no servidor.";
@@ -321,6 +325,19 @@ export class PersonalFinanceService {
       `Data: ${formatBrazilianDate(command.date)}`,
       `Total de ${categoryDisplayNames[command.category]} em ${monthSheet}: ${formatCurrency(total)}`
     ].join("\n");
+  }
+  async buildDailySummaryMessage(now: Date = new Date()): Promise<string> {
+    if (!this.isConfigured()) {
+      return "Financeiro pessoal ainda nao esta configurado no servidor.";
+    }
+
+    const sheets = await this.createSheetsClient(env.PERSONAL_FINANCE_GOOGLE_SHEET_ID);
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    const report = await this.readMonthReport(sheets, month);
+    const openNeeds = await this.readOpenNeeds(sheets);
+
+    return formatDailySummaryMessage(report.monthSheet, year, report.items, openNeeds);
   }
 
   private isConfigured(): boolean {
@@ -527,6 +544,17 @@ export class PersonalFinanceService {
       phone: row[6] ?? "",
       messageId: row[7] ?? ""
     }));
+  }
+  private async readOpenNeeds(sheets: GoogleSheetsClient): Promise<string[]> {
+    const range = quoteSheet(env.PERSONAL_FINANCE_NECESSIDADES_SHEET) + "!A:B";
+    const rows = await sheets.getValues(range);
+    return rows
+      .map((row) => ({
+        item: String(row[0] ?? "").trim(),
+        boughtAt: String(row[1] ?? "").trim()
+      }))
+      .filter((row) => row.item && normalizeText(row.item) !== "item" && !row.boughtAt)
+      .map((row) => row.item);
   }
 
   private async processFootballCommand(command: ParsedFootballUpdateCommand | ParsedFootballBatchCommand | ParsedFootballReportCommand): Promise<string> {
@@ -842,27 +870,34 @@ function parseFootballCommand(
 }
 
 function parseFootballUpdateLine(line: string): FootballAthleteUpdate | null {
-  const parts = line.split(",").map((part) => part.trim()).filter(Boolean);
-  const athlete = findAthlete(parts[0] ?? "");
+  const parts = line.split(String.fromCharCode(44)).map((part) => part.trim());
+  const athlete = findAthlete(parts[0] ?? String());
   if (!athlete) {
     return null;
   }
 
-  const values = parts.slice(1, 7).map((part) => parseNonNegativeInteger(part));
-  if (!values.length || values.some((value) => value === null)) {
+  const providedValues = parts.slice(1, 6).filter((part) => part.length > 0);
+  const values = providedValues.map((part) => parseNonNegativeInteger(part));
+  if (values.some((value) => value === null)) {
     return null;
   }
 
   return {
     athlete,
-    values: values.map((value) => value ?? 0)
+    values: [
+      values[0] ?? 0,
+      values[1] ?? 0,
+      values[2] ?? 0,
+      values[3] ?? 0,
+      values[4] ?? 0,
+      1
+    ]
   };
 }
 
 function looksLikeFootballUpdateLine(line: string): boolean {
-  return line.includes(",") && Boolean(findAthlete(line.split(",")[0] ?? ""));
+  return Boolean(findAthlete(line.split(String.fromCharCode(44))[0] ?? String()));
 }
-
 function parseFootballMetric(action: string): FootballMetricName | null {
   if (action === "gol" || action === "gols") return "Gols";
   if (action === "gol contra" || action === "gols contra") return "Gols contra";
@@ -1094,6 +1129,31 @@ function isString(value: unknown): value is string {
 
 function sumItems(items: Array<{ amount: number }>): number {
   return items.reduce((sum, item) => sum + item.amount, 0);
+}
+
+export function formatDailySummaryMessage(
+  monthSheet: string,
+  year: number,
+  items: Array<{ category: string; amount: number }>,
+  needs: string[]
+): string {
+  const sorted = [...items].sort((a, b) => b.amount - a.amount);
+  const monthLines = sorted.length
+    ? sorted.map((item) => `${item.category}: ${formatCurrency(item.amount)}`)
+    : ["Sem lancamentos no mes."];
+  const needLines = needs.length
+    ? needs.map((item) => `- ${item}`)
+    : ["Nenhuma necessidade em aberto."];
+
+  return [
+    "Resumo do mes ate hoje:",
+    `${monthSheet}/${year}`,
+    `Total: ${formatCurrency(sumItems(sorted))}`,
+    ...monthLines,
+    "",
+    "Necessidades:",
+    ...needLines
+  ].join("\n");
 }
 
 function formatMonthReport(

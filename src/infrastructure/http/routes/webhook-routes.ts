@@ -92,6 +92,26 @@ export function registerWebhookRoutes(app: FastifyInstance) {
       return reply.code(202).send({ accepted: true, handler: "personal_finance" });
     }
 
+    if (currentContainer.personalFinance.looksLikeCommand(message.text)) {
+      request.log.warn(
+        {
+          channel: "whatsapp",
+          conversationId: message.chatId,
+          senderId: message.senderId,
+          senderPhone: message.senderPhone,
+          personalFinancePhone,
+          fromMe: message.fromMe,
+          messageId: message.providerMessageId,
+          processPrivateFromMe: env.WAHA_PROCESS_PRIVATE_FROM_ME,
+          ownPhoneConfigured: Boolean(env.WAHA_OWN_PHONE),
+          allowedPhonesConfigured: Boolean(env.PERSONAL_FINANCE_ALLOWED_PHONES),
+          allowedLidsConfigured: Boolean(env.PERSONAL_FINANCE_ALLOWED_LIDS)
+        },
+        "Ignored personal finance command from unallowed sender"
+      );
+      return reply.code(202).send({ accepted: false, reason: "personal_finance_sender_not_allowed" });
+    }
+
     const commandText = extractRedeasCommand(message.text);
     if (!commandText) {
       request.log.info(

@@ -2,7 +2,7 @@ import { env } from "../config/env.js";
 import type { WhatsAppGateway, WhatsAppSendResult } from "../../application/ports/messaging.js";
 
 export class WahaClient implements WhatsAppGateway {
-  async sendText(input: { phone: string; text: string }): Promise<WhatsAppSendResult> {
+  async sendText(input: { phone: string; text: string; session?: string }): Promise<WhatsAppSendResult> {
     if (env.WAHA_DRY_RUN) {
       return {
         status: 200,
@@ -15,7 +15,8 @@ export class WahaClient implements WhatsAppGateway {
       };
     }
 
-    const chatId = await this.resolveSendChatId(toPrivateChatId(input.phone));
+    const session = input.session ?? env.WAHA_SESSION;
+    const chatId = await this.resolveSendChatId(toPrivateChatId(input.phone), session);
     const response = await fetch(`${env.WAHA_BASE_URL}/api/sendText`, {
       method: "POST",
       headers: {
@@ -23,7 +24,7 @@ export class WahaClient implements WhatsAppGateway {
         ...(env.WAHA_API_KEY ? { "X-Api-Key": env.WAHA_API_KEY } : {})
       },
       body: JSON.stringify({
-        session: env.WAHA_SESSION,
+        session,
         chatId,
         text: input.text
       })
@@ -46,14 +47,14 @@ export class WahaClient implements WhatsAppGateway {
     };
   }
 
-  async resolveSendChatId(chatId: string): Promise<string> {
+  async resolveSendChatId(chatId: string, session = env.WAHA_SESSION): Promise<string> {
     if (!isBrazilianPrivateChatId(chatId)) {
       return chatId;
     }
 
     const phone = normalizePhone(chatId);
     const response = await fetch(
-      `${env.WAHA_BASE_URL}/api/contacts/check-exists?phone=${encodeURIComponent(phone)}&session=${encodeURIComponent(env.WAHA_SESSION)}`,
+      env.WAHA_BASE_URL + "/api/contacts/check-exists?phone=" + encodeURIComponent(phone) + String.fromCharCode(38) + "session=" + encodeURIComponent(session),
       {
         method: "GET",
         headers: {

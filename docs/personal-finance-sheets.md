@@ -255,6 +255,29 @@ A aba pode ser renomeada via:
 PERSONAL_FINANCE_NECESSIDADES_SHEET=Necessidades
 ```
 
+
+## Resumo diario automatico
+
+A API agenda um envio diario as 8h no fuso `America/Sao_Paulo`, usando `node-cron`. O envio monta o resumo da aba mensal correspondente ao dia atual e lista todas as linhas da aba `Necessidades` que estao sem data em `Comprado em`.
+
+Payload enviado ao WAHA via `/api/sendText`:
+
+```json
+{
+  "chatId": "5544998581299@c.us",
+  "text": "Resumo do mes ate hoje:\n...\nNecessidades:\n- ...",
+  "session": "Arthur-Redeas-2"
+}
+```
+
+Variaveis:
+
+```env
+PERSONAL_FINANCE_DAILY_SUMMARY_ENABLED=true
+PERSONAL_FINANCE_DAILY_SUMMARY_CRON=0 8 * * *
+PERSONAL_FINANCE_DAILY_SUMMARY_PHONE=5544998581299
+PERSONAL_FINANCE_DAILY_SUMMARY_SESSION=Arthur-Redeas-2
+```
 ## Futebol: agente-bote-certo
 
 A outra planilha usa o gatilho `agente-bote-certo`. Compartilhe essa planilha com a mesma Service Account usada nas financas, como Editor.
@@ -274,18 +297,20 @@ Payload em lote:
 ```text
 agente-bote-certo
 Setembro
-Braza,1,2,3,0,0,1
+Braza,1,2,3,0,0
 Igao,2
-Joao Gustavo,0,0,1,1,0,1
+Joao Gustavo,0,0,1,1,0
+Luca
 ```
 
 A primeira linha depois do gatilho pode ser o mes. Se omitir o mes, a API usa o mes atual. Depois disso, cada linha representa:
 
 ```text
-Atleta,Gols,Gols contra,Assistencias,Cartoes amarelos,Cartoes vermelhos,Jogos
+Atleta,Gols,Gols contra,Assistencias,Cartoes amarelos,Cartoes vermelhos
 ```
 
-Nao precisa mandar todas as colunas. `Braza,2` soma 2 em `Gols` e deixa as outras colunas como estao. Valores `0` sao aceitos no payload completo.
+Nao precisa mandar todas as colunas. A coluna Jogos nao deve ser enviada: cada atleta reconhecido em uma linha soma +1 em Jogos.
+Braza,2 soma 2 em Gols, soma +1 em Jogos e deixa as outras colunas como estao. Luca sozinho soma apenas +1 em Jogos. Valores 0 sao aceitos no payload completo.
 
 Os comandos antigos simples ainda funcionam, usando o mes atual:
 
