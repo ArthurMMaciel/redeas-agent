@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   PersonalFinanceService,
   formatDailySummaryMessage,
+  formatShoppingList,
+  formatTaskList,
   normalizeBrazilianPhone,
   parseFinanceCommand,
   parseMoney,
-  parsePersonalCommand
+  parsePersonalCommand,
+  removeShoppingListItems
 } from "./personal-finance-service.js";
 import { env } from "../config/env.js";
 
@@ -118,6 +121,67 @@ describe("parsePersonalCommand", () => {
     });
   });
 
+  it("interpreta inclusao de itens na lista de compras", () => {
+    const command = parsePersonalCommand(
+      "fin-darithur\ncompras\narroz, tomate, cebola"
+    );
+
+    expect(command).toMatchObject({
+      trigger: "finance",
+      type: "shopping-list",
+      action: "add",
+      items: ["arroz", "tomate", "cebola"]
+    });
+  });
+
+  it("interpreta remocao de itens feitos da lista de compras", () => {
+    const command = parsePersonalCommand(
+      "fin-darithur\ncompras feita\narroz, tomate, cebola"
+    );
+
+    expect(command).toMatchObject({
+      trigger: "finance",
+      type: "shopping-list",
+      action: "remove",
+      items: ["arroz", "tomate", "cebola"]
+    });
+  });
+
+  it("interpreta consulta da lista de compras", () => {
+    const command = parsePersonalCommand("fin-darithur\nlista compras");
+
+    expect(command).toMatchObject({
+      trigger: "finance",
+      type: "shopping-list",
+      action: "list",
+      items: []
+    });
+  });
+
+  it("interpreta inclusao de tarefas", () => {
+    const command = parsePersonalCommand(
+      "fin-darithur\ntarefas\naspirar casa, limpar churrasqueira, passar produto na pedra"
+    );
+
+    expect(command).toMatchObject({
+      trigger: "finance",
+      type: "task-list",
+      action: "add",
+      items: ["aspirar casa", "limpar churrasqueira", "passar produto na pedra"]
+    });
+  });
+
+  it("interpreta consulta de tarefas", () => {
+    const command = parsePersonalCommand("fin-darithur\nlistar tarefas");
+
+    expect(command).toMatchObject({
+      trigger: "finance",
+      type: "task-list",
+      action: "list",
+      items: []
+    });
+  });
+
   it("interpreta o agente de futebol bote certo", () => {
     const command = parsePersonalCommand("agente-bote-certo\ngol\nBraza\n2");
 
@@ -176,6 +240,44 @@ describe("formatDailySummaryMessage", () => {
     expect(normalizedText).toContain("Mercado: R$ 120,50");
     expect(normalizedText).toContain("Necessidades:");
     expect(normalizedText).toContain("- Filtro de agua");
+  });
+});
+
+describe("formatShoppingList", () => {
+  it("lista um item por linha", () => {
+    expect(formatShoppingList(["arroz", "tomate", "cebola"])).toBe(
+      "Lista de compras:\n- arroz\n- tomate\n- cebola"
+    );
+  });
+
+  it("informa quando a lista esta vazia", () => {
+    expect(formatShoppingList([])).toBe("Lista de compras vazia.");
+  });
+});
+
+describe("removeShoppingListItems", () => {
+  it("remove todas as ocorrencias ignorando acentos e maiusculas", () => {
+    expect(
+      removeShoppingListItems(
+        ["Arroz", "Tomate", "CEBOLA", "Pão", "tomate", "Leite"],
+        ["arroz", "tomate", "cebola", "pao"]
+      )
+    ).toEqual({
+      remainingItems: ["Leite"],
+      removedItems: ["Arroz", "Tomate", "CEBOLA", "Pão", "tomate"]
+    });
+  });
+});
+
+describe("formatTaskList", () => {
+  it("lista uma tarefa por linha", () => {
+    expect(formatTaskList(["aspirar casa", "limpar churrasqueira"])).toBe(
+      "Tarefas:\n- aspirar casa\n- limpar churrasqueira"
+    );
+  });
+
+  it("informa quando nao ha tarefas", () => {
+    expect(formatTaskList([])).toBe("Nenhuma tarefa cadastrada.");
   });
 });
 describe("parseMoney", () => {

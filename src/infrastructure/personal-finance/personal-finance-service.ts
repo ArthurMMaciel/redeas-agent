@@ -166,6 +166,18 @@ interface ParsedNeedCommand {
   boughtAt?: Date;
 }
 
+interface ParsedShoppingListCommand {
+  type: "shopping-list";
+  action: "add" | "remove" | "list";
+  items: string[];
+}
+
+interface ParsedTaskListCommand {
+  type: "task-list";
+  action: "add" | "list";
+  items: string[];
+}
+
 type FootballReportKind = "resumo" | "gols" | "gols-contra" | "assistencias" | "amarelos" | "vermelhos" | "jogos";
 type FootballMetricName = "Gols" | "Gols contra" | "Assistencias" | "Cartoes amarelos" | "Cartoes vermelhos" | "Jogos";
 
@@ -201,7 +213,9 @@ type ParsedFinanceCommand =
   | ParsedFinanceEntryCommand
   | ParsedFinanceRemoveCommand
   | ParsedFinanceReportCommand
-  | ParsedNeedCommand;
+  | ParsedNeedCommand
+  | ParsedShoppingListCommand
+  | ParsedTaskListCommand;
 
 type ParsedPersonalCommand =
   | ({ trigger: "finance" } & ParsedFinanceCommand)
@@ -275,6 +289,14 @@ export class PersonalFinanceService {
 
     if (command.type === "report") {
       return this.buildFinanceReport(sheets, command, input.receivedAt);
+    }
+
+    if (command.type === "shopping-list") {
+      return this.processShoppingListCommand(sheets, command);
+    }
+
+    if (command.type === "task-list") {
+      return this.processTaskListCommand(sheets, command);
     }
 
     if (command.type === "need") {
@@ -557,6 +579,61 @@ export class PersonalFinanceService {
       .map((row) => row.item);
   }
 
+  private async processShoppingListCommand(
+    sheets: GoogleSheetsClient,
+    command: ParsedShoppingListCommand
+  ): Promise<string> {
+    const range = `${quoteSheet(env.PERSONAL_FINANCE_SHOPPING_LIST_SHEET)}!A:A`;
+
+    if (command.action === "add") {
+      await sheets.appendValues(range, command.items.map((item) => [item]));
+      return formatListChange("Adicionados a lista de compras:", command.items);
+    }
+
+    const currentRows = await sheets.getValues(range);
+    const currentItems = currentRows
+      .map((row) => String(row[0] ?? "").trim())
+      .filter(Boolean);
+
+    if (command.action === "list") {
+      return formatShoppingList(currentItems);
+    }
+
+    const { remainingItems, removedItems } = removeShoppingListItems(currentItems, command.items);
+
+    if (!removedItems.length) {
+      return "Nenhum dos itens informados estava na lista de compras.";
+    }
+
+    const compactedRows = remainingItems.map((item) => [item]);
+    while (compactedRows.length < currentRows.length) {
+      compactedRows.push([""]);
+    }
+    await sheets.updateValues(
+      `${quoteSheet(env.PERSONAL_FINANCE_SHOPPING_LIST_SHEET)}!A1:A${currentRows.length}`,
+      compactedRows
+    );
+
+    return formatListChange("Removidos da lista de compras:", uniqueNormalized(removedItems));
+  }
+
+  private async processTaskListCommand(
+    sheets: GoogleSheetsClient,
+    command: ParsedTaskListCommand
+  ): Promise<string> {
+    const range = `${quoteSheet(env.PERSONAL_FINANCE_TASKS_SHEET)}!A:A`;
+
+    if (command.action === "add") {
+      await sheets.appendValues(range, command.items.map((item) => [item]));
+      return formatListChange("Tarefas adicionadas:", command.items);
+    }
+
+    const items = (await sheets.getValues(range))
+      .map((row) => String(row[0] ?? "").trim())
+      .filter(Boolean);
+    return formatTaskList(items);
+  }
+
   private async processFootballCommand(command: ParsedFootballUpdateCommand | ParsedFootballBatchCommand | ParsedFootballReportCommand): Promise<string> {
     if (!env.PERSONAL_FOOTBALL_GOOGLE_SHEET_ID) {
       return "Planilha do futebol ainda nao esta configurada. Defina PERSONAL_FOOTBALL_GOOGLE_SHEET_ID.";
@@ -694,6 +771,26 @@ function parseFinanceBody(lines: string[], now: Date): ParsedFinanceCommand | nu
     return parseRemoveCommand(lines.slice(2), now);
   }
 
+  if (hasTrigger && action === "compras") {
+    return parseShoppingListCommand("add", lines.slice(2));
+  }
+
+  if (hasTrigger && ["compras feita", "compras feitas"].includes(action)) {
+    return parseShoppingListCommand("remove", lines.slice(2));
+  }
+
+  if (hasTrigger && ["lista compras", "lista de compras"].includes(action)) {
+    return { type: "shopping-list", action: "list", items: [] };
+  }
+
+  if (hasTrigger && action === "tarefas") {
+    return parseTaskListCommand(lines.slice(2));
+  }
+
+  if (hasTrigger && ["listar tarefas", "lista tarefas", "lista de tarefas"].includes(action)) {
+    return { type: "task-list", action: "list", items: [] };
+  }
+
   if (hasTrigger && ["necessidade", "necessidades", "comprar", "lista"].includes(action)) {
     return parseNeedCommand(lines.slice(2), now);
   }
@@ -814,6 +911,27 @@ function parseNeedCommand(lines: string[], now: Date): ParsedNeedCommand | null 
   return boughtAtText
     ? { type: "need", item, boughtAt: parseDateFromText(boughtAtText, now) }
     : { type: "need", item };
+}
+
+function parseShoppingListCommand(
+  action: "add" | "remove",
+  lines: string[]
+): ParsedShoppingListCommand | null {
+  const items = parseCommaSeparatedItems(lines);
+
+  return items.length ? { type: "shopping-list", action, items } : null;
+}
+
+function parseTaskListCommand(lines: string[]): ParsedTaskListCommand | null {
+  const items = parseCommaSeparatedItems(lines);
+  return items.length ? { type: "task-list", action: "add", items } : null;
+}
+
+function parseCommaSeparatedItems(lines: string[]): string[] {
+  return lines
+    .flatMap((line) => line.split(","))
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function parseFootballCommand(
@@ -1131,6 +1249,45 @@ function sumItems(items: Array<{ amount: number }>): number {
   return items.reduce((sum, item) => sum + item.amount, 0);
 }
 
+function uniqueNormalized(items: string[]): string[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const normalized = normalizeText(item);
+    if (seen.has(normalized)) {
+      return false;
+    }
+    seen.add(normalized);
+    return true;
+  });
+}
+
+export function removeShoppingListItems(
+  currentItems: string[],
+  requestedItems: string[]
+): { remainingItems: string[]; removedItems: string[] } {
+  const itemsToRemove = new Set(requestedItems.map(normalizeText));
+  return {
+    remainingItems: currentItems.filter((item) => !itemsToRemove.has(normalizeText(item))),
+    removedItems: currentItems.filter((item) => itemsToRemove.has(normalizeText(item)))
+  };
+}
+
+export function formatShoppingList(items: string[]): string {
+  return items.length
+    ? ["Lista de compras:", ...items.map((item) => `- ${item}`)].join("\n")
+    : "Lista de compras vazia.";
+}
+
+export function formatTaskList(items: string[]): string {
+  return items.length
+    ? ["Tarefas:", ...items.map((item) => `- ${item}`)].join("\n")
+    : "Nenhuma tarefa cadastrada.";
+}
+
+function formatListChange(title: string, items: string[]): string {
+  return [title, ...items.map((item) => `- ${item}`)].join("\n");
+}
+
 export function formatDailySummaryMessage(
   monthSheet: string,
   year: number,
@@ -1351,6 +1508,10 @@ function invalidCommandMessage(): string {
     "Relatorio: fin-darithur / relatorio / mes / 09/2026",
     "Remover: fin-darithur / remover / Mercado / 85,90 / 22/09/2026",
     "Necessidade: fin-darithur / necessidade / Filtro de agua / 22/09/2026",
+    "Compras: fin-darithur / compras / arroz, tomate, cebola",
+    "Lista: fin-darithur / lista compras",
+    "Tarefas: fin-darithur / tarefas / aspirar casa, limpar churrasqueira",
+    "Listar tarefas: fin-darithur / listar tarefas",
     "Futebol: agente-bote-certo / gol / Braza / 1"
   ].join("\n");
 }

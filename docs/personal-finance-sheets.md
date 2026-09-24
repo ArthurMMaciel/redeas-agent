@@ -272,6 +272,62 @@ A aba pode ser renomeada via:
 PERSONAL_FINANCE_NECESSIDADES_SHEET=Necessidades
 ```
 
+## Lista de compras
+
+A aba `Lista de compras` usa somente a coluna `A`, sem cabecalho. Cada item ocupa uma linha.
+Para adicionar itens separados por virgula:
+
+```text
+fin-darithur
+compras
+arroz, tomate, cebola
+```
+
+Para remover todos os itens informados, ignorando maiusculas e acentos:
+
+```text
+fin-darithur
+compras feita
+arroz, tomate, cebola
+```
+
+Para listar os itens atuais:
+
+```text
+fin-darithur
+lista compras
+```
+
+O nome da aba pode ser alterado via:
+
+```env
+PERSONAL_FINANCE_SHOPPING_LIST_SHEET=Lista de compras
+```
+
+## Tarefas
+
+A aba `Tarefa` tambem usa somente a coluna `A`, sem cabecalho. Cada tarefa ocupa uma linha.
+Para adicionar tarefas separadas por virgula:
+
+```text
+fin-darithur
+tarefas
+aspirar casa, limpar churrasqueira, passar produto na pedra
+```
+
+Para listar as tarefas atuais:
+
+```text
+fin-darithur
+listar tarefas
+```
+
+O nome da aba pode ser alterado via:
+
+```env
+PERSONAL_FINANCE_TASKS_SHEET=Tarefa
+```
+
 
 ## Resumo diario automatico
 

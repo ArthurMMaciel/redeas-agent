@@ -40,6 +40,8 @@ Ja existe uma base funcional com:
 - Em producao, o fluxo da planilha chegou em `Processing personal finance message`, mas falhou com `ENOENT` ao abrir `/opt/redeas/secrets/google-service-account.json` dentro do container `api`. `docker-compose.prod.yml` agora monta `/opt/redeas/secrets` no container da API como somente leitura.
 - Categorias pessoais da planilha incluem: `Condominio`, `Gas`, `Luz`, `Internet`, `Unimed`, `Mercado`, `Gasolina`, `Cartao`, `Banho Sukita`, `Reserva`, `Investimentos`, `Lazer`, `Caixinha`, `Viagem`, `Moto`, `Saude`, `MEI`, `Rino`, `Seguro`, `IPVA`, `IPTU`, `Muay-thai`, `Imprevistos`, `Obras`, `Uso Mesada Arthur` e `Uso Mesada Dari`. O parser ignora acentos/maiusculas e os nomes de exibicao mantem acentos na resposta/historico quando aplicavel.
 - Fluxo pessoal fin-darithur agora roteia comandos deterministas alem de lancamentos: relatorios mensais, todos os meses, categorias, categoria especifica, dia, diarios por mes; remocao/subtracao de valor; e inclusao na aba Necessidades com colunas Item e Comprado em.
+- Fluxo pessoal fin-darithur agora controla a aba `Lista de compras`, sem cabecalho e usando a coluna A: `compras` adiciona itens separados por virgula/linhas, `compras feita` remove todas as ocorrencias informadas ignorando acentos/maiusculas, e `lista compras` lista o conteudo atual. O nome da aba pode ser configurado por `PERSONAL_FINANCE_SHOPPING_LIST_SHEET`.
+- Fluxo pessoal fin-darithur agora controla a aba `Tarefa`, sem cabecalho e usando a coluna A: `tarefas` adiciona tarefas separadas por virgula/linhas e `listar tarefas` lista o conteudo atual. O nome da aba pode ser configurado por `PERSONAL_FINANCE_TASKS_SHEET`.
 - Cron diario do fin-darithur agenda envio as 8h America/Sao_Paulo para 5544998581299 pela sessao Arthur-Redeas-2, com resumo da aba mensal atual e necessidades sem Comprado em.
 - Nova integracao pessoal de futebol usa o gatilho agente-bote-certo, a mesma Service Account Google e uma planilha separada configurada por PERSONAL_FOOTBALL_GOOGLE_SHEET_ID. A planilha tem Visao Geral como primeira aba e abas mensais Janeiro-Dezembro.
 - Payload em lote do futebol agora aceita linhas CSV Atleta,Gols,Gols contra,Assistencias,Cartoes amarelos,Cartoes vermelhos. A coluna Jogos nao deve ser enviada: cada atleta reconhecido em uma linha soma +1 jogo; atleta sozinho tambem soma apenas +1 jogo.
@@ -123,6 +125,12 @@ pm.cmd test -- --run -> 64 testes passaram apos novos comandos pessoais.
 - npm.cmd run build -> passou apos diagnostico/fix de mensagens fromMe privadas.
 - `npm.cmd test -- --run src/infrastructure/http/waha-payload.test.ts src/infrastructure/http/routes/webhook-routes.test.ts` -> 22 testes passaram apos alinhar exemplos de deploy para `message.any` e `WAHA_PROCESS_GROUP_FROM_ME=true`.
 - `npm.cmd run typecheck` -> passou apos os ajustes de configuracao/documentacao do WAHA.
+- `npm.cmd test -- --run` -> 75 testes passaram apos implementar a Lista de compras.
+- `npm.cmd run typecheck` -> passou apos implementar a Lista de compras.
+- `npm.cmd run build` -> passou apos implementar a Lista de compras.
+- `npm.cmd test -- --run` -> 79 testes passaram apos implementar a aba Tarefa.
+- `npm.cmd run typecheck` -> passou apos implementar a aba Tarefa.
+- `npm.cmd run build` -> passou apos implementar a aba Tarefa.
 
 ## Como Continuar em Novo Chat
 

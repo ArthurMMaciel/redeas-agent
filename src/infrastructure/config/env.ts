@@ -41,6 +41,8 @@ const envSchema = z.object({
   PERSONAL_FINANCE_ALLOWED_LIDS: z.string().optional(),
   PERSONAL_FINANCE_LANCAMENTOS_SHEET: z.string().default("Lancamentos"),
   PERSONAL_FINANCE_NECESSIDADES_SHEET: z.string().default("Necessidades"),
+  PERSONAL_FINANCE_SHOPPING_LIST_SHEET: z.string().default("Lista de compras"),
+  PERSONAL_FINANCE_TASKS_SHEET: z.string().default("Tarefa"),
   PERSONAL_FINANCE_MONTH_SHEET_NAMES: z.string().optional(),
   PERSONAL_FINANCE_MONTH_CATEGORY_COLUMN: z.string().default("A"),
   PERSONAL_FINANCE_MONTH_VALUE_COLUMN: z.string().default("B"),
