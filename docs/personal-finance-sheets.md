@@ -133,6 +133,7 @@ Na VPS, sugestao:
 `.env.production`:
 
 ```env
+WAHA_PROCESS_GROUP_FROM_ME=true
 WAHA_PROCESS_PRIVATE_FROM_ME=true
 WAHA_OWN_PHONE=5544998924520
 
@@ -144,6 +145,22 @@ PERSONAL_FINANCE_LANCAMENTOS_SHEET=Lancamentos
 PERSONAL_FINANCE_MONTH_CATEGORY_COLUMN=A
 PERSONAL_FINANCE_MONTH_VALUE_COLUMN=B
 ```
+
+`.env.waha`:
+
+```env
+WHATSAPP_HOOK_URL=http://api:3000/webhooks/waha
+WHATSAPP_HOOK_EVENTS=message.any
+```
+
+Use `message.any` quando comandos enviados pelo proprio WhatsApp conectado tambem devem ser
+processados. O evento `message` cobre somente mensagens recebidas. Nao assine os dois eventos ao
+mesmo tempo, pois uma mensagem recebida pode ser entregue duas vezes.
+
+O webhook definido por `WHATSAPP_HOOK_URL` e global e, por isso, nao aparece em
+`GET /api/sessions` dentro de `config.webhooks`. Para configurar por sessao, atualize a sessao com
+`PUT /api/sessions/{session}` e envie a configuracao completa; o endpoint
+`POST /api/sessions/{session}/start` apenas inicia a sessao e ignora configuracao no corpo.
 
 Se o WAHA entregar mensagens privadas com `senderId` no formato `@lid` e nao conseguir
 resolver esse LID para o telefone real, inclua o LID observado nos logs em

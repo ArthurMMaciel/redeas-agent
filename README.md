@@ -183,7 +183,7 @@ Configure o WAHA para enviar mensagens recebidas para:
 POST /webhooks/waha
 ```
 
-O endpoint aceita payloads comuns do WAHA com campos como `payload.id`, `payload.from`, `payload.body`, `payload.timestamp` e ignora mensagens `fromMe=true`.
+O endpoint aceita payloads comuns do WAHA com campos como `payload.id`, `payload.from`, `payload.body` e `payload.timestamp`. Mensagens `fromMe=true` sao aceitas somente quando habilitadas por `WAHA_PROCESS_PRIVATE_FROM_ME` ou `WAHA_PROCESS_GROUP_FROM_ME`; para que o WAHA entregue mensagens proprias, configure o evento `message.any`.
 
 ## Segurança
 
