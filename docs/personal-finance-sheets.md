@@ -81,7 +81,39 @@ A API registra historico na aba `Lancamentos`, colunas `A:H`:
 RegistradoEm | Data | Mes | Categoria | Descricao | Valor | Telefone | MessageId
 ```
 
-Ela tambem soma o valor na aba do mes. Por padrao:
+Ela tambem soma o valor na aba do mes. Para `Cartao`/`Cartão`, usa o mes seguinte
+a data da compra: R$ 56,00 em 14/10/2026 soma no Cartao de Novembro.
+As outras categorias, incluindo Uso Mesada Arthur/Dari e Lazer, usam o mes do gasto.
+O historico preserva a data original em `Data` e registra a aba de destino em `Mes`.
+Relatorios mensais usam a aba de destino; relatorios diarios usam a data original.
+Dezembro vai para Janeiro; as abas atuais nao separam anos. Lancamentos antigos
+nao sao movidos automaticamente com esta atualizacao.
+
+Compras parceladas no cartao aceitam o valor total e de 1 a 12 parcelas:
+
+```text
+fin-darithur
+300,00
+Cartao
+parcelado
+3
+compra de teste
+14/10/2026
+```
+
+Tambem e permitido enviar categoria antes do valor, ou `parcelado 3` em uma linha.
+A descricao e a data sao opcionais; sem data, usa a data da mensagem.
+O exemplo soma R$ 100,00 em Novembro, Dezembro e Janeiro. A resposta mostra
+mes/ano de cada parcela. As parcelas sao divididas em centavos, mantendo o total:
+R$ 100,00 em 3 parcelas gera R$ 33,34, R$ 33,33 e R$ 33,33.
+Cada parcela tem uma linha de historico, com a data da compra, mes da fatura e
+identificador proprio para evitar repeticao da mesma mensagem.
+Para subtrair todas as parcelas, envie o mesmo valor total, quantidade e data
+da compra, acrescentando `remover` na linha depois de `fin-darithur`.
+O limite de 12 evita repetir abas do mesmo mes em uma unica compra; a planilha
+ainda nao separa anos, mesmo para parcelamentos que atravessam dezembro.
+
+Por padrao:
 
 - categoria na coluna `A`;
 - total/somatorio na coluna `B`.
@@ -180,7 +212,8 @@ arroz e carne
 22/09/2026
 ```
 
-Remover/subtrair valor da categoria no mes da data informada:
+Remover/subtrair valor da categoria no mes da data informada (para Cartao, no mes
+seguinte; informe a data da compra, assim como na inclusao):
 
 ```text
 fin-darithur

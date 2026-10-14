@@ -1,6 +1,8 @@
 import { createSign } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { env } from "../config/env.js";
+import { createInstallmentSchedule } from "../../domain/services/installment-schedule.js";
+import { moneyCents } from "../../shared/types.js";
 
 const categories = [
   "Condominio",
@@ -133,6 +135,7 @@ interface ParsedFinanceEntryCommand {
   amount: number;
   description: string;
   date: Date;
+  installments?: number;
 }
 
 interface ParsedFinanceRemoveCommand {
@@ -141,6 +144,7 @@ interface ParsedFinanceRemoveCommand {
   amount: number;
   description: string;
   date: Date;
+  installments?: number;
 }
 
 type ReportKind =
@@ -310,13 +314,17 @@ export class PersonalFinanceService {
       ].join("\n");
     }
 
+    if (command.installments) {
+      return this.processCardInstallments(sheets, input, command);
+    }
+
     const duplicate = await this.wasProcessed(sheets, input.messageId);
     if (duplicate) {
       return "Essa mensagem ja tinha sido processada. Nao mexi na planilha novamente.";
     }
 
     if (command.type === "remove") {
-      const monthSheet = getMonthSheetName(command.date);
+      const monthSheet = getFinanceMonthSheetName(command);
       const total = await this.addToMonthlyTotal(sheets, monthSheet, {
         ...command,
         amount: -command.amount
@@ -336,7 +344,7 @@ export class PersonalFinanceService {
       ].join("\n");
     }
 
-    const monthSheet = getMonthSheetName(command.date);
+    const monthSheet = getFinanceMonthSheetName(command);
     const total = await this.addToMonthlyTotal(sheets, monthSheet, command);
     await this.appendHistory(sheets, input, command, monthSheet);
 
@@ -348,6 +356,39 @@ export class PersonalFinanceService {
       `Total de ${categoryDisplayNames[command.category]} em ${monthSheet}: ${formatCurrency(total)}`
     ].join("\n");
   }
+  private async processCardInstallments(
+    sheets: GoogleSheetsClient,
+    input: PersonalFinanceMessage,
+    command: ParsedFinanceEntryCommand | ParsedFinanceRemoveCommand
+  ): Promise<string> {
+    const count = command.installments!;
+    const firstMonth = new Date(Date.UTC(command.date.getFullYear(), command.date.getMonth() + 1, 1, 12));
+    const schedule = createInstallmentSchedule(moneyCents(Math.round(command.amount * 100)), count, firstMonth);
+    const lines = [
+      command.type === "remove" ? "Compra parcelada removida:" : "Compra parcelada registrada:",
+      `Cart\u00e3o - total ${formatCurrency(command.amount)} em ${count} parcelas`,
+      command.description,
+      `Data da compra: ${formatBrazilianDate(command.date)}`
+    ];
+
+    for (const installment of schedule) {
+      const messageId = `${input.messageId}:parcela:${installment.number}`;
+      const monthSheet = getMonthSheetName(installment.dueOn);
+      const amount = (installment.amountCents as number) / 100;
+      if (!(await this.wasProcessed(sheets, messageId))) {
+        const entry = {
+          ...command,
+          amount: command.type === "remove" ? -amount : amount,
+          description: `${command.type === "remove" ? "REMOVIDO: " : ""}${command.description} (parcela ${installment.number}/${count})`
+        };
+        await this.addToMonthlyTotal(sheets, monthSheet, entry);
+        await this.appendHistory(sheets, { ...input, messageId }, entry, monthSheet);
+      }
+      lines.push(`Parcela ${installment.number}/${count}: ${monthSheet}/${installment.dueOn.getUTCFullYear()} - ${formatCurrency(amount)}`);
+    }
+    return lines.join("\n");
+  }
+
   async buildDailySummaryMessage(now: Date = new Date()): Promise<string> {
     if (!this.isConfigured()) {
       return "Financeiro pessoal ainda nao esta configurado no servidor.";
@@ -795,26 +836,13 @@ function parseFinanceBody(lines: string[], now: Date): ParsedFinanceCommand | nu
     return parseNeedCommand(lines.slice(2), now);
   }
 
-  const category = findCategory(body);
+  const category = findCategory(body) ?? (hasTrigger ? findCategory(lines[2] ?? "") : undefined);
   if (!category) {
     return null;
   }
 
   if (hasTrigger) {
-    const amount = parseMoney(lines[2] ?? "");
-    if (!amount || amount <= 0) {
-      return null;
-    }
-
-    const description = lines[3] && !isDateText(lines[3]) ? lines[3] : categoryDisplayNames[category];
-    const dateText = lines[4] ?? (lines[3] && isDateText(lines[3]) ? lines[3] : "");
-    return {
-      type: "entry",
-      category,
-      amount,
-      description,
-      date: dateText ? parseDateFromText(dateText, now) : now
-    };
+    return parseFinanceEntryLines(lines.slice(1), now, "entry");
   }
 
   const remainder = body.slice(category.length).trim();
@@ -884,20 +912,45 @@ function parseReportCommand(lines: string[], now: Date): ParsedFinanceReportComm
 }
 
 function parseRemoveCommand(lines: string[], now: Date): ParsedFinanceRemoveCommand | null {
+  return parseFinanceEntryLines(lines, now, "remove");
+}
+
+function parseFinanceEntryLines(inputLines: string[], now: Date, type: "entry"): ParsedFinanceEntryCommand | null;
+function parseFinanceEntryLines(inputLines: string[], now: Date, type: "remove"): ParsedFinanceRemoveCommand | null;
+function parseFinanceEntryLines(
+  inputLines: string[], now: Date, type: "entry" | "remove"
+): ParsedFinanceEntryCommand | ParsedFinanceRemoveCommand | null {
+  const lines = [...inputLines];
+  if (findCategory(lines[1] ?? "") && !findCategory(lines[0] ?? "")) {
+    [lines[0], lines[1]] = [lines[1]!, lines[0]!];
+  }
   const category = findCategory(lines[0] ?? "");
   const amount = parseMoney(lines[1] ?? "");
   if (!category || !amount || amount <= 0) {
     return null;
   }
 
-  const dateText = lines.find((line, index) => index >= 2 && isDateText(line));
-  const description = lines.find((line, index) => index >= 2 && !isDateText(line)) ?? categoryDisplayNames[category];
+  const details = lines.slice(2);
+  const installmentIndex = details.findIndex((line) => /^parcelado(?:\s|$)/.test(normalizeText(line)));
+  let installments: number | undefined;
+  if (installmentIndex >= 0) {
+    const marker = normalizeText(details[installmentIndex]!);
+    const countText = marker === "parcelado" ? details[installmentIndex + 1] ?? "" : marker.slice("parcelado".length).trim();
+    if (!/^\d+$/.test(countText)) return null;
+    installments = Number(countText);
+    // The workbook has only 12 month tabs, without separate years.
+    if (category !== "Cartao" || installments < 1 || installments > 12 || Math.round(amount * 100) < installments) return null;
+    details.splice(installmentIndex, marker === "parcelado" ? 2 : 1);
+  }
+  const dateText = details.find(isDateText);
+  const description = details.find((line) => !isDateText(line)) ?? categoryDisplayNames[category];
   return {
-    type: "remove",
+    type,
     category,
     amount,
     description,
-    date: dateText ? parseDateFromText(dateText, now) : now
+    date: dateText ? parseDateFromText(dateText, now) : now,
+    ...(installments ? { installments } : {})
   };
 }
 
@@ -1106,6 +1159,16 @@ function parseMonthText(text: string, now: Date): { month?: number; year?: numbe
 
 function isDateText(text: string): boolean {
   return /^\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?$/.test(text.trim());
+}
+
+function getFinanceMonthSheetName(
+  command: Pick<ParsedFinanceEntryCommand, "category" | "date">
+): string {
+  // Use day 1 so purchases on the 29th-31st cannot skip a shorter month.
+  const date = command.category === "Cartao"
+    ? new Date(command.date.getFullYear(), command.date.getMonth() + 1, 1)
+    : command.date;
+  return getMonthSheetName(date);
 }
 
 function getMonthSheetName(date: Date): string {
@@ -1505,6 +1568,7 @@ function invalidCommandMessage(): string {
   return [
     "Nao consegui entender o comando.",
     "Lancamento: fin-darithur / Mercado / 85,90 / arroz / 22/09/2026",
+    "Parcelado: fin-darithur / Cartao / 300,00 / parcelado / 3 / compra / 14/10/2026 (1 a 12 parcelas)",
     "Relatorio: fin-darithur / relatorio / mes / 09/2026",
     "Remover: fin-darithur / remover / Mercado / 85,90 / 22/09/2026",
     "Necessidade: fin-darithur / necessidade / Filtro de agua / 22/09/2026",

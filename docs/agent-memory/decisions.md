@@ -1,5 +1,12 @@
 # Decisions
 
+## 2026-10-14 - Datas de cartao e parcelamento pessoal
+
+- Cartao soma no mes seguinte a data informada, incluindo remocoes; preservar a data da compra no historico.
+- Mesada e lazer seguem o mes do gasto, conforme esclarecimento do usuario.
+- Parcelamento usa valor total, quantidade e primeira fatura no mes seguinte, com divisao em centavos e historico por parcela. Remocao replica o cronograma com valores negativos.
+- Limitar a 12 parcelas enquanto as abas mensais nao separam anos. Nao migrar automaticamente lancamentos existentes.
+
 ## 2026-07-18 - Memoria de agente no repositorio
 
 Decisao:

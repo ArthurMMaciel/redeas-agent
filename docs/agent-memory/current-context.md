@@ -1,6 +1,16 @@
 # Current Context
 
-Ultima atualizacao: 2026-09-24
+Ultima atualizacao: 2026-10-14
+
+## Regra de datas do controle pessoal (2026-10-14)
+
+- Implementado: compras e remocoes em Cartao usam o mes seguinte a data da compra; exemplo 14/10/2026 entra no Cartao de Novembro. Data original preservada no historico, coluna Mes registra aba de destino. Relatorios diarios seguem a data da compra e mensais seguem a fatura.
+- Confirmado pelo usuario: Uso Mesada Arthur/Dari e Lazer continuam no mes do gasto.
+- Integrado parcelamento ao fluxo pessoal usando createInstallmentSchedule: formato multiline com categoria/total ou total/categoria, depois parcelado e quantidade (ou parcelado N), descricao/data opcionais. Primeira parcela no mes seguinte; restantes nos meses consecutivos. Divisao em centavos conserva total. Remover com os mesmos dados subtrai todas as parcelas.
+- Cada parcela usa MessageId com sufixo :parcela:N e tem historico proprio; reentrega da mesma mensagem pula parcelas ja registradas e retoma pendentes.
+- Limite atual de 1 a 12 parcelas para evitar repetir abas mensais numa compra. Abas nao separam anos; dezembro aponta para Janeiro existente. Historico anterior nao migrado. Atualizacao de total e escrita do historico ainda nao sao atomicas (limitacao preexistente do Sheets); falha entre essas escritas exige reconciliacao.
+- Validacao: npm.cmd test -> 102 testes passaram; npm.cmd run typecheck e npm.cmd run build -> passaram; git diff --check -> passou. Publicacao na main autorizada pelo usuario; comandos de deploy em deploy/production-setup.md usam /opt/redeas. Commit desta sessao: feat: route card purchases to next invoice and add installments.
+- Proximos passos: usuario atualizar API na VPS com git pull --ff-only origin main e docker compose -f docker-compose.prod.yml up -d --build --no-deps api; validar compra simples/parcelada real. Evolucao futura: abas por ano para faturas de anos diferentes.
 
 ## Projeto
 
@@ -42,6 +52,7 @@ Ja existe uma base funcional com:
 - Fluxo pessoal fin-darithur agora roteia comandos deterministas alem de lancamentos: relatorios mensais, todos os meses, categorias, categoria especifica, dia, diarios por mes; remocao/subtracao de valor; e inclusao na aba Necessidades com colunas Item e Comprado em.
 - Fluxo pessoal fin-darithur agora controla a aba `Lista de compras`, sem cabecalho e usando a coluna A: `compras` adiciona itens separados por virgula/linhas, `compras feita` remove todas as ocorrencias informadas ignorando acentos/maiusculas, e `lista compras` lista o conteudo atual. O nome da aba pode ser configurado por `PERSONAL_FINANCE_SHOPPING_LIST_SHEET`.
 - Fluxo pessoal fin-darithur agora controla a aba `Tarefa`, sem cabecalho e usando a coluna A: `tarefas` adiciona tarefas separadas por virgula/linhas e `listar tarefas` lista o conteudo atual. O nome da aba pode ser configurado por `PERSONAL_FINANCE_TASKS_SHEET`.
+- O fluxo de tarefas foi validado em producao. A primeira tentativa falhou porque o nome real da aba estava diferente; apos corrigir para `Tarefa`, a escrita funcionou.
 - Cron diario do fin-darithur agenda envio as 8h America/Sao_Paulo para 5544998581299 pela sessao Arthur-Redeas-2, com resumo da aba mensal atual e necessidades sem Comprado em.
 - Nova integracao pessoal de futebol usa o gatilho agente-bote-certo, a mesma Service Account Google e uma planilha separada configurada por PERSONAL_FOOTBALL_GOOGLE_SHEET_ID. A planilha tem Visao Geral como primeira aba e abas mensais Janeiro-Dezembro.
 - Payload em lote do futebol agora aceita linhas CSV Atleta,Gols,Gols contra,Assistencias,Cartoes amarelos,Cartoes vermelhos. A coluna Jogos nao deve ser enviada: cada atleta reconhecido em uma linha soma +1 jogo; atleta sozinho tambem soma apenas +1 jogo.
