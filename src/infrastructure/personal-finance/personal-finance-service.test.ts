@@ -71,8 +71,8 @@ describe("parseFinanceCommand", () => {
 
   it("aceita novas categorias da planilha mensal", () => {
     expect(parseFinanceCommand("fin-darithur\nMuay-thai\n90\nmensalidade")?.category).toBe("Muay-thai");
-    expect(parseFinanceCommand("fin-darithur\nUso Mesada Arthur\n35\nlanche")?.category).toBe("Uso Mesada Arthur");
-    expect(parseFinanceCommand("fin-darithur\nUso Mesada Dari\n42\nalmoco")?.category).toBe("Uso Mesada Dari");
+    expect(parseFinanceCommand("fin-darithur\nUso Mesada Arthur\n35\nPix\nlanche")?.category).toBe("Uso Mesada Arthur");
+    expect(parseFinanceCommand("fin-darithur\nUso Mesada Dari\n42\nCartao\nalmoco")?.category).toBe("Uso Mesada Dari");
   });
 });
 
@@ -389,8 +389,6 @@ describe("PersonalFinanceService.process - mes do gasto e da fatura", () => {
     ["Cartao", "31/12/2026", "2026-12-31", "Janeiro", true],
     ["Mercado", "14/10/2026", "2026-10-14", "Outubro", false],
     ["Mercado", "14/10/2026", "2026-10-14", "Outubro", true],
-    ["Uso Mesada Arthur", "14/10/2026", "2026-10-14", "Outubro", false],
-    ["Uso Mesada Dari", "14/10/2026", "2026-10-14", "Outubro", false],
     ["Lazer", "14/10/2026", "2026-10-14", "Outubro", false]
   ])("%s em %s entra em %s (%s, remover=%s)", async (category, date, isoDate, month, remove) => {
     const sheets = {
@@ -417,9 +415,9 @@ describe("PersonalFinanceService.process - mes do gasto e da fatura", () => {
 
       expect(sheets.updateValues).toHaveBeenCalledTimes(1);
       expect(sheets.updateValues).toHaveBeenCalledWith(`'${month}'!B1`, [[remove ? 44 : 156]]);
-      expect(sheets.appendValues).toHaveBeenCalledWith(`'${env.PERSONAL_FINANCE_LANCAMENTOS_SHEET}'!A:H`, [
+      expect(sheets.appendValues).toHaveBeenCalledWith(`'${env.PERSONAL_FINANCE_LANCAMENTOS_SHEET}'!A:I`, [
         [expect.any(String), isoDate, month, expect.any(String), remove ? "REMOVIDO: teste" : "teste",
-          remove ? -56 : 56, "5500000000000", "test-card-month"]
+          remove ? -56 : 56, "5500000000000", "test-card-month", ""]
       ]);
       expect(response).toContain(`em ${month}:`);
     } finally {
@@ -448,5 +446,53 @@ describe("PersonalFinanceService.canHandle", () => {
       env.PERSONAL_FINANCE_ALLOWED_PHONES = originalAllowedPhones;
       env.PERSONAL_FINANCE_ALLOWED_LIDS = originalAllowedLids;
     }
+  });
+});
+
+describe("mesada e ajuda", () => {
+  it.each(["pix", "Pix", "PIx", "cartao", "Cartão", "CARTAO"])('reconhece pagamento %s', (payment) => {
+    expect(parseFinanceCommand(`fin-darithur\n35\nUso Mesada Arthur\n${payment}\nlanche`)?.paymentMethod)
+      .toBe(payment.toLowerCase().startsWith("p") ? "pix" : "cartao");
+  });
+
+  it.each(["", "dinheiro", "lanche"])("rejeita mesada sem pagamento valido: %s", (payment) => {
+    expect(parseFinanceCommand(`fin-darithur\nUso Mesada Dari\n35\n${payment}`)).toBeNull();
+    expect(parsePersonalCommand(`fin-darithur\nremover\nUso Mesada Dari\n35\n${payment}`)).toBeNull();
+    expect(parseFinanceCommand("fin uso mesada arthur 35 pix")).toBeNull();
+  });
+
+  it.each([
+    ["Uso Mesada Arthur", "Pix", "14/10/2026", "Outubro", false],
+    ["Uso Mesada Dari", "PIX", "14/10/2026", "Outubro", true],
+    ["Uso Mesada Arthur", "Cartão", "31/12/2026", "Janeiro", false],
+    ["Uso Mesada Dari", "cartao", "31/12/2026", "Janeiro", true]
+  ])("registra %s com %s em %s na aba %s (remover=%s)", async (category, payment, date, month, remove) => {
+    const sheets = { getValues: vi.fn(async (range: string) => range.endsWith("!H:H") ? [] : [[category, "100"]]), updateValues: vi.fn(async () => {}), appendValues: vi.fn(async () => {}) };
+    const service = new PersonalFinanceService();
+    const internals = service as unknown as { isConfigured(): boolean; createSheetsClient(): Promise<typeof sheets> };
+    vi.spyOn(internals, "isConfigured").mockReturnValue(true);
+    vi.spyOn(internals, "createSheetsClient").mockResolvedValue(sheets);
+    try {
+      const result = await service.process({ phone: "5500000000000", messageId: "mesada", receivedAt: new Date(2027, 2, 1), text: ["fin-darithur", ...(remove ? ["remover"] : []), category, "35", payment, "lanche", date].join("\n") });
+      expect(sheets.updateValues).toHaveBeenCalledWith(`'${month}'!B1`, [[remove ? 65 : 135]]);
+      expect(sheets.appendValues).toHaveBeenCalledWith(expect.stringContaining("!A:I"), [[expect.any(String), expect.any(String), month, category, remove ? "REMOVIDO: lanche" : "lanche", remove ? -35 : 35, "5500000000000", "mesada", payment.toLowerCase().startsWith("p") ? "Pix" : "Cartão"]]);
+      expect(result).toContain(`em ${month}:`);
+      expect(result).toContain("Pagamento:");
+    } finally { vi.restoreAllMocks(); }
+  });
+
+  it("mostra exemplos de comandos sem acessar a planilha", async () => {
+    const service = new PersonalFinanceService();
+    const internals = service as unknown as { isConfigured(): boolean; createSheetsClient(): Promise<unknown> };
+    vi.spyOn(internals, "isConfigured").mockReturnValue(true);
+    const client = vi.spyOn(internals, "createSheetsClient");
+    try {
+      const response = await service.process({ phone: "5500000000000", messageId: "help", receivedAt: new Date(), text: "fin-darithur\ncomandos" });
+      expect(response).toContain("fin-darithur\nUso Mesada Arthur\n35\nPix");
+      expect(response).toContain("fin-darithur\nlista compras");
+      expect(response).toContain("fin-darithur\nrelatorio\ndias");
+      expect(response).not.toContain("agente-bote-certo");
+      expect(client).not.toHaveBeenCalled();
+    } finally { vi.restoreAllMocks(); }
   });
 });

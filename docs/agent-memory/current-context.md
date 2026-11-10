@@ -1,6 +1,18 @@
 # Current Context
 
-Ultima atualizacao: 2026-10-14
+Ultima atualizacao: 2026-11-09
+
+## Mesada e consulta de comandos (2026-11-10)
+
+- Implementado conforme `docs/plans/mesada-forma-pagamento.md`: mesadas Arthur/Dari exigem Pix ou Cartao; Pix entra no mes da data do gasto e cartao no seguinte, inclusive remocoes. Forma de pagamento e registrada em I de Lancamentos; MessageId permanece em H. Grafias ignoram caixa e acentos.
+- `fin-darithur` / `comandos` retorna exemplos das operacoes financeiras, necessidades, compras e tarefas, sem acessar a planilha.
+- Decisao proposta: normalizar caixa/acentos, exigir modo para ambas as mesadas, aplicar a mesma regra em inclusao e remocao, preservar `MessageId` em H e registrar modo em nova coluna de historico.
+- Confirmado pelo usuario: data explicita define o mes de referencia; sem data, usar a data de recebimento. Pix entra no mes de referencia e cartao no mes seguinte, inclusive para gastos retroativos.
+- Validacao: 114 testes passaram; `npm.cmd run typecheck`, `npm.cmd run build` e `git diff --check` passaram.
+- Resumo diario para grupo: usuario informou que configurou o destino em producao. Codigo preserva chat IDs com `@g.us`.
+- Comandos: `git status --short --branch` mostrou main limpa; `git pull --ff-only origin main` informou `Already up to date` no commit `609c396`. Foram inspecionados `personal-finance-service.ts`, testes e `docs/personal-finance-sheets.md`.
+- Riscos: mensagens antigas de mesada passam a ser invalidas; abas mensais nao separam anos; escrita do total e historico nao e atomica. Nao migrar dados anteriores sem pedido explicito.
+- Usuario confirmou que a coluna I da aba Lancamentos esta OK. Proximo passo: publicar a alteracao quando solicitado e validar lancamento e ajuda no WhatsApp apos atualizacao da API.
 
 ## Regra de datas do controle pessoal (2026-10-14)
 

@@ -75,19 +75,32 @@ O ID da planilha informada e:
 1gGlTzY7uuYyzpb5TVmrD8Yg4XsIlxrWSl6tp38_4j2c
 ```
 
-A API registra historico na aba `Lancamentos`, colunas `A:H`:
+A API registra historico na aba `Lancamentos`, colunas `A:I`:
 
 ```text
-RegistradoEm | Data | Mes | Categoria | Descricao | Valor | Telefone | MessageId
+RegistradoEm | Data | Mes | Categoria | Descricao | Valor | Telefone | MessageId | Forma de pagamento
 ```
 
 Ela tambem soma o valor na aba do mes. Para `Cartao`/`Cartão`, usa o mes seguinte
 a data da compra: R$ 56,00 em 14/10/2026 soma no Cartao de Novembro.
-As outras categorias, incluindo Uso Mesada Arthur/Dari e Lazer, usam o mes do gasto.
+Uso Mesada Arthur/Dari exige Pix ou Cartao: Pix usa o mes do gasto e Cartao usa o mes seguinte. As outras categorias, incluindo Lazer, usam o mes do gasto.
 O historico preserva a data original em `Data` e registra a aba de destino em `Mes`.
 Relatorios mensais usam a aba de destino; relatorios diarios usam a data original.
 Dezembro vai para Janeiro; as abas atuais nao separam anos. Lancamentos antigos
 nao sao movidos automaticamente com esta atualizacao.
+
+Para mesada, informe a forma de pagamento depois do valor; descricao e data sao opcionais:
+
+```text
+fin-darithur
+Uso Mesada Arthur
+35
+Cartão
+lanche
+14/10/2026
+```
+
+O mesmo formato vale para Dari e aceita Pix ou Cartao independentemente de maiusculas e acentos. Para remover, use `remover` apos o gatilho e informe a mesma forma e data. Sem data, usa a data da mensagem. A coluna I registra a forma de pagamento; mantenha a coluna H para MessageId e, se houver cabecalho, identifique I como `Forma de pagamento`.
 
 Compras parceladas no cartao aceitam o valor total e de 1 a 12 parcelas:
 
@@ -201,6 +214,13 @@ resolver esse LID para o telefone real, inclua o LID observado nos logs em
 ## Comandos financeiros no WhatsApp
 
 Todos os comandos financeiros continuam usando a primeira linha exatamente como `fin-darithur`.
+
+Para receber exemplos dos comandos disponiveis pelo WhatsApp:
+
+```text
+fin-darithur
+comandos
+```
 
 Lancamento:
 

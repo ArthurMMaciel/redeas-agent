@@ -136,6 +136,7 @@ interface ParsedFinanceEntryCommand {
   description: string;
   date: Date;
   installments?: number;
+  paymentMethod?: "pix" | "cartao";
 }
 
 interface ParsedFinanceRemoveCommand {
@@ -145,6 +146,7 @@ interface ParsedFinanceRemoveCommand {
   description: string;
   date: Date;
   installments?: number;
+  paymentMethod?: "pix" | "cartao";
 }
 
 type ReportKind =
@@ -214,6 +216,7 @@ interface ParsedFootballReportCommand {
 }
 
 type ParsedFinanceCommand =
+  | { type: "help" }
   | ParsedFinanceEntryCommand
   | ParsedFinanceRemoveCommand
   | ParsedFinanceReportCommand
@@ -289,6 +292,8 @@ export class PersonalFinanceService {
       return this.processFootballCommand(command);
     }
 
+    if (command.type === "help") return financeHelpMessage();
+
     const sheets = await this.createSheetsClient(env.PERSONAL_FINANCE_GOOGLE_SHEET_ID);
 
     if (command.type === "report") {
@@ -338,6 +343,7 @@ export class PersonalFinanceService {
       return [
         "Valor removido:",
         `${categoryDisplayNames[command.category]} - ${formatCurrency(command.amount)}`,
+        ...(command.paymentMethod ? [`Pagamento: ${command.paymentMethod === "pix" ? "Pix" : "Cartão"}`] : []),
         command.description,
         `Data: ${formatBrazilianDate(command.date)}`,
         `Novo total de ${categoryDisplayNames[command.category]} em ${monthSheet}: ${formatCurrency(total)}`
@@ -351,6 +357,7 @@ export class PersonalFinanceService {
     return [
       "Lancamento registrado:",
       `${categoryDisplayNames[command.category]} - ${formatCurrency(command.amount)}`,
+      ...(command.paymentMethod ? [`Pagamento: ${command.paymentMethod === "pix" ? "Pix" : "Cartão"}`] : []),
       command.description,
       `Data: ${formatBrazilianDate(command.date)}`,
       `Total de ${categoryDisplayNames[command.category]} em ${monthSheet}: ${formatCurrency(total)}`
@@ -490,10 +497,10 @@ export class PersonalFinanceService {
   private async appendHistory(
     sheets: GoogleSheetsClient,
     input: PersonalFinanceMessage,
-    command: Pick<ParsedFinanceEntryCommand, "category" | "amount" | "description" | "date">,
+    command: Pick<ParsedFinanceEntryCommand, "category" | "amount" | "description" | "date" | "paymentMethod">,
     monthSheet: string
   ): Promise<void> {
-    await sheets.appendValues(`${quoteSheet(env.PERSONAL_FINANCE_LANCAMENTOS_SHEET)}!A:H`, [
+    await sheets.appendValues(`${quoteSheet(env.PERSONAL_FINANCE_LANCAMENTOS_SHEET)}!A:I`, [
       [
         new Date().toISOString(),
         formatIsoDate(command.date),
@@ -502,7 +509,8 @@ export class PersonalFinanceService {
         command.description,
         command.amount,
         normalizeBrazilianPhone(input.phone),
-        input.messageId
+        input.messageId,
+        command.paymentMethod === "pix" ? "Pix" : command.paymentMethod === "cartao" ? "Cartão" : ""
       ]
     ]);
   }
@@ -804,6 +812,8 @@ function parseFinanceBody(lines: string[], now: Date): ParsedFinanceCommand | nu
   const body = hasTrigger ? lines[1] ?? "" : hasLegacyPrefix ? firstLine.slice(4).trim() : firstLine;
   const action = normalizeText(body);
 
+  if (hasTrigger && action === "comandos" && lines.length === 2) return { type: "help" };
+
   if (hasTrigger && ["relatorio", "relatorio financeiro", "report"].includes(action)) {
     return parseReportCommand(lines.slice(2), now);
   }
@@ -840,6 +850,8 @@ function parseFinanceBody(lines: string[], now: Date): ParsedFinanceCommand | nu
   if (!category) {
     return null;
   }
+
+  if (!hasTrigger && isAllowanceCategory(category)) return null;
 
   if (hasTrigger) {
     return parseFinanceEntryLines(lines.slice(1), now, "entry");
@@ -931,6 +943,12 @@ function parseFinanceEntryLines(
   }
 
   const details = lines.slice(2);
+  let paymentMethod: "pix" | "cartao" | undefined;
+  if (isAllowanceCategory(category)) {
+    const payment = normalizeText(details.shift() ?? "");
+    if (payment !== "pix" && payment !== "cartao") return null;
+    paymentMethod = payment;
+  }
   const installmentIndex = details.findIndex((line) => /^parcelado(?:\s|$)/.test(normalizeText(line)));
   let installments: number | undefined;
   if (installmentIndex >= 0) {
@@ -950,6 +968,7 @@ function parseFinanceEntryLines(
     amount,
     description,
     date: dateText ? parseDateFromText(dateText, now) : now,
+    ...(paymentMethod ? { paymentMethod } : {}),
     ...(installments ? { installments } : {})
   };
 }
@@ -1162,13 +1181,17 @@ function isDateText(text: string): boolean {
 }
 
 function getFinanceMonthSheetName(
-  command: Pick<ParsedFinanceEntryCommand, "category" | "date">
+  command: Pick<ParsedFinanceEntryCommand, "category" | "date" | "paymentMethod">
 ): string {
   // Use day 1 so purchases on the 29th-31st cannot skip a shorter month.
-  const date = command.category === "Cartao"
+  const date = command.category === "Cartao" || (isAllowanceCategory(command.category) && command.paymentMethod === "cartao")
     ? new Date(command.date.getFullYear(), command.date.getMonth() + 1, 1)
     : command.date;
   return getMonthSheetName(date);
+}
+
+function isAllowanceCategory(category: (typeof categories)[number]): boolean {
+  return category === "Uso Mesada Arthur" || category === "Uso Mesada Dari";
 }
 
 function getMonthSheetName(date: Date): string {
@@ -1564,9 +1587,40 @@ function footballReportMetric(kind: FootballReportKind): { key: keyof Pick<Footb
   return null;
 }
 
+function financeHelpMessage(): string {
+  const examples: Array<[string, string[]]> = [
+    ["Lançar gasto", ["Mercado", "85,90", "arroz", "22/09/2026"]],
+    ["Mesada (Pix ou Cartão; Arthur ou Dari)", ["Uso Mesada Arthur", "35", "Pix", "lanche", "22/09/2026"]],
+    ["Cartão parcelado (1 a 12 parcelas)", ["Cartao", "300", "parcelado", "3", "compra", "22/09/2026"]],
+    ["Remover valor", ["remover", "Mercado", "85,90", "compra duplicada", "22/09/2026"]],
+    ["Remover mesada", ["remover", "Uso Mesada Dari", "35", "Cartao", "lanche", "22/09/2026"]],
+    ["Remover compra parcelada", ["remover", "Cartao", "300", "parcelado", "3", "compra", "22/09/2026"]],
+    ["Relatório do mês", ["relatorio", "mes", "09/2026"]],
+    ["Relatório de todos os meses", ["relatorio", "todos"]],
+    ["Relatório de categorias", ["relatorio", "categorias"]],
+    ["Relatório de categoria (mês opcional)", ["relatorio", "categoria", "Mercado", "09/2026"]],
+    ["Relatório de um dia", ["relatorio", "dia", "22/09/2026"]],
+    ["Relatório diário do mês", ["relatorio", "dias", "09/2026"]],
+    ["Cadastrar necessidade", ["necessidade", "Filtro de agua", "22/09/2026"]],
+    ["Adicionar compras", ["compras", "arroz, tomate"]],
+    ["Listar compras", ["lista compras"]],
+    ["Remover compras", ["compras feita", "arroz, tomate"]],
+    ["Adicionar tarefas", ["tarefas", "limpar casa, lavar carro"]],
+    ["Listar tarefas", ["listar tarefas"]]
+  ];
+  return [
+    "Comandos do fin-darithur",
+    "Em lançamentos, descrição e data são opcionais; sem data, usa a data da mensagem. Mesada exige Pix ou Cartão. Em necessidades, a data de compra é opcional.",
+    "Remover subtrai o valor e mantém o histórico. Para remover, use a data e a forma de pagamento originais; em parcelamentos, use também o total e a quantidade de parcelas originais.",
+    ...examples.map(([title, lines]) => `${title}:\n${[financeTrigger, ...lines].join("\n")}`)
+  ].join("\n\n");
+}
+
 function invalidCommandMessage(): string {
   return [
     "Nao consegui entender o comando.",
+    "Mesada exige Pix ou Cartao: fin-darithur / Uso Mesada Arthur / 35 / Pix",
+    "Para ver todos os comandos: fin-darithur / comandos",
     "Lancamento: fin-darithur / Mercado / 85,90 / arroz / 22/09/2026",
     "Parcelado: fin-darithur / Cartao / 300,00 / parcelado / 3 / compra / 14/10/2026 (1 a 12 parcelas)",
     "Relatorio: fin-darithur / relatorio / mes / 09/2026",
